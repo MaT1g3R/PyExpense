@@ -9,22 +9,26 @@ https://docs.djangoproject.com/en/1.11/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
-
-import os
+from json import load
+from pathlib import Path
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(Path(__file__).absolute().parent.parent).absolute()
 
-
+SETTINGS_FILE = BASE_DIR / 'settings.json'
+with SETTINGS_FILE.open('r') as fp:
+    __settings_dict = load(fp)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = __settings_dict['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -67,20 +71,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'expense_snek_api.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'expense_snek_api_db',
-        'TEST': {'NAME': 'expense_snek_api_test_db'},
-        'HOST': '127.0.0.1',
-        'PORT': '5432'
+        'NAME': __settings_dict['DATABASE_NAME'],
+        'USER': __settings_dict['DATABASE_USER'],
+        'TEST': {'NAME': __settings_dict['TEST_DATABASE_NAME']},
+        'PASSWORD': __settings_dict['DATABASE_PASSWORD'],
+        'HOST': __settings_dict['DATABASE_HOST'],
+        'PORT': __settings_dict['DATABASE_PORT']
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
@@ -100,7 +104,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
@@ -113,7 +116,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/

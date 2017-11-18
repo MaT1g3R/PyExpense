@@ -105,3 +105,6 @@ venv.bak/
 
 # idea
 .idea/
+
+# single file ignores
+expense_snek_api/settings.json
