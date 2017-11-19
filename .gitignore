@@ -108,3 +108,4 @@ venv.bak/
 
 # single file ignores
 expense_snek_api/settings.json
+docker-compose.yml
