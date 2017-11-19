@@ -1,0 +1,29 @@
+version: '2'
+
+services:
+
+  snek_db:
+    image: postgres
+    volumes:
+      - ./dbdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: password
+
+  web:
+    command: bash -c "python3 expense_snek_api/manage.py migrate; while :; do python3 expense_snek_api/manage.py runserver 0.0.0.0:8000; sleep 1; done"
+    image: python:latest
+    depends_on:
+      - snek_db
+    build: .
+    volumes:
+      - .:/code
+    environment:
+      IN_DOCKER: 1
+
+  webserver:
+    image: jumanjiman/caddy
+    depends_on:
+      - web
+    ports:
+      - 80:8000
+    command: -port 8000 -host 0.0.0.0 "proxy / web:8000 { }"

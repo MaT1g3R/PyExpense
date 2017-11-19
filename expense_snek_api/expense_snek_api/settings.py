@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 from json import load
+from os import getenv
 from pathlib import Path
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -28,7 +29,7 @@ SECRET_KEY = __settings_dict['SECRET_KEY']
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['web']
 
 # Application definition
 
@@ -73,18 +74,31 @@ WSGI_APPLICATION = 'expense_snek_api.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
+in_docker = getenv('IN_DOCKER') == '1'
+if in_docker:
+    DATABASES = {
+        'default': {
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': __settings_dict['DATABASE_NAME'],
-        'USER': __settings_dict['DATABASE_USER'],
-        'TEST': {'NAME': __settings_dict['TEST_DATABASE_NAME']},
-        'PASSWORD': __settings_dict['DATABASE_PASSWORD'],
-        'HOST': __settings_dict['DATABASE_HOST'],
-        'PORT': __settings_dict['DATABASE_PORT']
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'postgres',
+            'USER': 'postgres',
+            'HOST': 'snek_db',
+            'PORT': '5432',
+            'PASSWORD': 'password'
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': __settings_dict['DATABASE_NAME'],
+            'USER': __settings_dict['DATABASE_USER'],
+            'TEST': {'NAME': __settings_dict['TEST_DATABASE_NAME']},
+            'PASSWORD': __settings_dict['DATABASE_PASSWORD'],
+            'HOST': __settings_dict['DATABASE_HOST'],
+            'PORT': __settings_dict['DATABASE_PORT']
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
