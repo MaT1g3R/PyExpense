@@ -17,14 +17,26 @@ from pathlib import Path
 BASE_DIR = Path(Path(__file__).absolute().parent.parent).absolute()
 
 SETTINGS_FILE = BASE_DIR / 'settings.json'
-with SETTINGS_FILE.open('r') as fp:
-    __settings_dict = load(fp)
+
+in_docker = getenv('IN_DOCKER') == '1'
+
+if not in_docker:
+    with SETTINGS_FILE.open('r') as fp:
+        __settings_dict = load(fp)
+else:
+    __settings_dict = None
+
+
+def get_value(key):
+    return getenv(key) if in_docker else __settings_dict[key]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = __settings_dict['SECRET_KEY']
+SECRET_KEY = get_value('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -74,31 +86,17 @@ WSGI_APPLICATION = 'expense_snek_api.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
-in_docker = getenv('IN_DOCKER') == '1'
-if in_docker:
-    DATABASES = {
-        'default': {
-
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'postgres',
-            'USER': 'postgres',
-            'HOST': 'snek_db',
-            'PORT': '5432',
-            'PASSWORD': 'password'
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': get_value('DATABASE_NAME'),
+        'USER': get_value('DATABASE_USER'),
+        'TEST': {'NAME': get_value('TEST_DATABASE_NAME')},
+        'PASSWORD': get_value('DATABASE_PASSWORD'),
+        'HOST': get_value('DATABASE_HOST'),
+        'PORT': get_value('DATABASE_PORT')
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': __settings_dict['DATABASE_NAME'],
-            'USER': __settings_dict['DATABASE_USER'],
-            'TEST': {'NAME': __settings_dict['TEST_DATABASE_NAME']},
-            'PASSWORD': __settings_dict['DATABASE_PASSWORD'],
-            'HOST': __settings_dict['DATABASE_HOST'],
-            'PORT': __settings_dict['DATABASE_PORT']
-        }
-    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators

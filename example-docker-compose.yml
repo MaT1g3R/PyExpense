@@ -8,6 +8,7 @@ services:
       - ./dbdata:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
 
   web:
     command: bash -c "python3 expense_snek_api/manage.py migrate; while :; do python3 expense_snek_api/manage.py runserver 0.0.0.0:8000; sleep 1; done"
@@ -19,6 +20,14 @@ services:
       - .:/code
     environment:
       IN_DOCKER: 1
+      SECRET_KEY: "foo" # Your secret key
+      DATABASE_NAME: postgres # Your db name
+      TEST_DATABASE_NAME: postgres_test # Your test db name
+      DATABASE_USER: postgres # Your postgres user name
+      DATABASE_PASSWORD: password # Your postgres password
+      DATABASE_HOST: snek_db  # Your postgres host, should be the name of the
+                              # db container
+      DATABASE_PORT: "5432"   # Your postgres port
 
 
   webserver:
