@@ -259,14 +259,15 @@ Base URI: /api/v1/users/
     Response body contains a list of users. Each user in the list has the
     following fields:
 
-    | Name        | Type               | Description                                    |
-    | ----------- | ------------------ | ---------------------------------------------- |
-    | id          | int                | ID of the user                                 |
-    | name        | string             | name of the user                               |
-    | created_at  | int                | Unix epoch of the creation time of the user    |
-    | shares      | List[int]          | List of share IDs of the shares the user is in |
-    | expenses    | List[int]          | List of expense IDs of expenses the user is in |
-    | balance     | map[string: float] | A mapping of user ID and balance amount.       |
+    | Name        | Type               | Description                                       |
+    | ----------- | ------------------ | ------------------------------------------------- |
+    | id          | int                | ID of the user                                    |
+    | name        | string             | name of the user                                  |
+    | created_at  | int                | Unix epoch of the creation time of the user       |
+    | updated_at  | int                | Unix epoch of the latest updated time of the user |
+    | shares      | List[int]          | List of share IDs of the shares the user is in    |
+    | expenses    | List[int]          | List of expense IDs of expenses the user is in    |
+    | balance     | map[string: float] | A mapping of user ID and balance amount.          |
     
     Note about the balance field:
 
@@ -286,6 +287,7 @@ Base URI: /api/v1/users/
             "id": 1,
             "name": "Alice",
             "created_at": 1511136613,
+            "updated_at": 1511136613,
             "shares": [0, 1],
             "expenses": [0, 1, 3, 4, 8],
             "balance": {"22": 3.0, "5787": -8.7}
@@ -294,6 +296,7 @@ Base URI: /api/v1/users/
             "id": 22,
             "name": "Bob",
             "created_at": 1511136621,
+            "updated_at": 1511930393,
             "shares": [0],
             "expenses": [0, 1, 3],
             "balance": {"1": -3.0}
@@ -302,6 +305,7 @@ Base URI: /api/v1/users/
             "id": 5787,
             "name": "Robert'); DROP TABLE users;",
             "created_at": 1511136601,
+            "updated_at": 1511136601,
             "shares": [0, 1, 8],
             "expenses": [1, 3, 4, 12, 16],
             "balance": {"1": 8.7, "8": -120.2}
@@ -310,6 +314,7 @@ Base URI: /api/v1/users/
             "id": 8,
             "name": "Charlie",
             "created_at": 1511226621,
+            "updated_at": 1511226621,
             "shares": [1, 2],
             "expenses": [4],
             "balance": {"5787": 120.2}
