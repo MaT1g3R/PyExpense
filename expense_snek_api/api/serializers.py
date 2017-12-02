@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
+from .models import _MONEY
+
 Serializer = serializers.Serializer
 _REQUIRED = {'required': True, 'allow_blank': False}
-_MONEY = {'max_digits': 19, 'decimal_places': 10}
 
 
 class TimedSerializerMixin:

@@ -2,6 +2,8 @@ from django.db import models
 
 Model = models.Model
 
+_MONEY = {'max_digits': 19, 'decimal_places': 10}
+
 
 class AutoTimedMixin:
     created_at = models.DateTimeField(auto_now_add=True)
@@ -24,7 +26,7 @@ class Expense(Model):
     updated_at = models.DateTimeField(auto_now=True)
     description = models.CharField(max_length=256)
     share = models.ForeignKey(Share, on_delete=models.CASCADE)
-    total = models.DecimalField()
+    total = models.DecimalField(**_MONEY)
     paid_by = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     resolved = models.BooleanField(default=False)
 
