@@ -100,6 +100,49 @@ Base URI: /api/v1/shares/
     ]
     ```
 
+- **create**
+
+    Create a new share.
+
+    Method: POST
+
+    Request Body:
+
+    | Name        | Required | Type      | Description                            |
+    | ----------- | -------- | --------- | -------------------------------------- |
+    | name        | Yes      | string    | name of the share                      |
+    | description | Yes      | string    | Description of the share               |
+    | users       | No       | List[int] | List of user IDs of users in the share |
+
+    Responses:
+
+    | Name        | Code | Type | Description                                                               |
+    | ----------- | ---- | ---- | ---------------------------- |
+    | OK          | 200  | JSON | Successfully created a share |
+    | Bad Request | 400  | JSON | Failed to create a share     |
+
+
+    Response Body:
+
+    | Name       | Type   | Description                                  |
+    | ---------- | ------ | -------------------------------------------- |
+    | success    | bool   | Boolean indicating success                   |
+    | reason     | string | Failure reason                               |
+    | id         | int    | ID of share created                          |
+    | created_at | int    | Unix epoch of the creation time of the share |
+
+    Examples:
+
+    `POST /api/v1/shares/create JSON={"name": "foo", "description": "foo share", "users": [1, 3]}`
+    ```json
+    {"success": true, "reason": null, id: 11, "created_at": 1512195076}
+    ```
+
+    `POST /api/v1/expenses/create JSON={"name": bar, "description": ""}`
+    ```json
+    {"success": false, "reason": "description cannot be empty", id: null, "created_at": null}
+    ```
+
 - **update**
 
     Update an existing share.
