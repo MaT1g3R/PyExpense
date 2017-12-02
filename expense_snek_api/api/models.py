@@ -1,33 +1,35 @@
 from django.db import models
 
+Model = models.Model
+
 
 class AutoTimedMixin:
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class User(models.Model, AutoTimedMixin):
+class User(Model, AutoTimedMixin):
     name = models.CharField(unique=True, max_length=64)
     expenses = models.ManyToManyField('Expense')
 
 
-class Share(models.Model, AutoTimedMixin):
+class Share(Model, AutoTimedMixin):
     name = models.CharField(unique=True, max_length=64)
     description = models.CharField(max_length=256)
     users = models.ManyToManyField(User)
 
 
-class Expense(models.Model):
+class Expense(Model):
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField(auto_now=True)
     description = models.CharField(max_length=256)
     share = models.ForeignKey(Share, on_delete=models.CASCADE)
-    total = models.FloatField()
+    total = models.DecimalField()
     paid_by = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     resolved = models.BooleanField(default=False)
 
 
-class ExpenseRatio(models.Model):
+class ExpenseRatio(Model):
     user = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     numerator = models.PositiveIntegerField()
     denominator = models.PositiveIntegerField()
