@@ -30,6 +30,12 @@ class ShareSerializer(Serializer, TimedSerializerMixin):
     expenses = IntegerList()
     total = serializers.DecimalField(read_only=True, **_MONEY)
 
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
+
 
 class UserSerializer(Serializer, TimedSerializerMixin):
     id = serializers.IntegerField(read_only=True)
@@ -37,6 +43,12 @@ class UserSerializer(Serializer, TimedSerializerMixin):
     shares = IntegerList()
     expenses = IntegerList()
     balance = BalanceMap()
+
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
 
 
 class ExpenseSerializer(Serializer, TimedSerializerMixin):
@@ -47,3 +59,9 @@ class ExpenseSerializer(Serializer, TimedSerializerMixin):
     paid_by = serializers.IntegerField(required=True)
     paid_for = StringMap()
     resolved = serializers.BooleanField()
+
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
