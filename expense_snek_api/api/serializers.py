@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
-from .models import _MONEY
+from expense_snek_api.core.constants import MONEY, REQUIRED, SS
+from .models import Share
 
 Serializer = serializers.Serializer
-_REQUIRED = {'required': True, 'allow_blank': False}
 
 
 class TimedSerializerMixin:
@@ -16,7 +16,7 @@ class IntegerList(serializers.ListField):
 
 
 class BalanceMap(serializers.DictField):
-    child = serializers.DecimalField(**_MONEY)
+    child = serializers.DecimalField(**MONEY)
 
 
 class StringMap(serializers.DictField):
@@ -25,28 +25,76 @@ class StringMap(serializers.DictField):
 
 class ShareSerializer(Serializer, TimedSerializerMixin):
     id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(max_length=64, **_REQUIRED)
-    description = serializers.CharField(max_length=256, **_REQUIRED)
+    name = serializers.CharField(max_length=SS['small'], **REQUIRED)
+    description = serializers.CharField(max_length=SS['medium'], **REQUIRED)
     users = IntegerList()
     expenses = IntegerList()
-    total = serializers.DecimalField(read_only=True, **_MONEY)
+    total = serializers.DecimalField(read_only=True, **MONEY)
 
     def create(self, validated_data):
-        pass
+        """
+        Create a new ``Share``
+
+        :param validated_data: the validated data from the client
+
+        It should contain the field "name" and "description".
+
+        It can optionally contain a field "users". It should
+        be a list of user ids from the client, but in the data
+        validation process it should have been transformed to a list of
+        ``User`` models.
+
+        :return: The created ``Share`` model
+        """
+        users = validated_data.pop('users', [])
+        instance = Share.objects.create(**validated_data)
+        for user in users:
+            instance.users.add(user)
+        instance.save()
+        return instance
 
     def update(self, instance, validated_data):
-        pass
+        """
+        Update an existing ``Share``
+
+        :param instance: the existing ``Share`` instance
+
+        :param validated_data: the validated data from the client, it can
+        contain thr 3 optional fields listed below.
+
+            name: the new name.
+
+            description: the new description.
+
+            users: the new list of users. If this list is empty, it will
+            clear all related ``User`` models from the ``Share``
+
+        :return: The updated ``Share`` instance
+        """
+        instance.name = validated_data.get('name', instance.name)
+        instance.description = validated_data.get('description',
+                                                  instance.description)
+        users = validated_data.get('users')
+        if users is not None:
+            instance.users.clear()
+            for user in users:
+                instance.users.add(user)
+        instance.save()
+        return instance
 
 
 class UserSerializer(Serializer, TimedSerializerMixin):
     id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(max_length=64, **_REQUIRED)
+    name = serializers.CharField(max_length=SS['small'], **REQUIRED)
     shares = IntegerList()
     expenses = IntegerList()
     balance = BalanceMap()
 
     def create(self, validated_data):
-        pass
+        """
+        For now, we do not allow user creation via the API.
+        """
+        raise ValueError("Cannot create user via API")
 
     def update(self, instance, validated_data):
         pass
@@ -54,9 +102,9 @@ class UserSerializer(Serializer, TimedSerializerMixin):
 
 class ExpenseSerializer(Serializer, TimedSerializerMixin):
     id = serializers.IntegerField(read_only=True)
-    description = serializers.CharField(max_length=256, **_REQUIRED)
+    description = serializers.CharField(max_length=SS['medium'], **REQUIRED)
     share = serializers.IntegerField(required=True)
-    total = serializers.DecimalField(**_MONEY)
+    total = serializers.DecimalField(**MONEY)
     paid_by = serializers.IntegerField(required=True)
     paid_for = StringMap()
     resolved = serializers.BooleanField()
