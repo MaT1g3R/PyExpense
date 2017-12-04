@@ -38,6 +38,15 @@ class Expense(Model):
     paid_by = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     resolved = models.BooleanField(default=False)
 
+    @property
+    def ratio(self) -> QuerySet:
+        return ExpenseRatio.objects.filter(expense=self)
+
+    def generate_ratio(self, paid_for):
+        for user, (top, bot) in paid_for.items():
+            ExpenseRatio.objects.create(user=user, numerator=top,
+                                        denominator=bot, expense=self)
+
 
 class ExpenseRatio(Model):
     user = models.ForeignKey(User, on_delete=models.DO_NOTHING)
