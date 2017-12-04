@@ -93,7 +93,6 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': get_value('DATABASE_NAME'),
         'USER': get_value('DATABASE_USER'),
-        'TEST': {'NAME': get_value('TEST_DATABASE_NAME')},
         'PASSWORD': get_value('DATABASE_PASSWORD'),
         'HOST': get_value('DATABASE_HOST'),
         'PORT': get_value('DATABASE_PORT')

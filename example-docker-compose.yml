@@ -22,7 +22,6 @@ services:
       IN_DOCKER: 1
       SECRET_KEY: "foo" # Your secret key
       DATABASE_NAME: postgres # Your db name
-      TEST_DATABASE_NAME: postgres_test # Your test db name
       DATABASE_USER: postgres # Your postgres user name
       DATABASE_PASSWORD: password # Your postgres password
       DATABASE_HOST: snek_db  # Your postgres host, should be the name of the
