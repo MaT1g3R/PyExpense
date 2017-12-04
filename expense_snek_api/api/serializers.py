@@ -60,7 +60,7 @@ class ShareSerializer(Serializer, TimedSerializerMixin):
         :param instance: the existing ``Share`` instance
 
         :param validated_data: the validated data from the client, it can
-        contain thr 3 optional fields listed below.
+                               contain the 3 optional fields listed below.
 
             name: the new name.
 
@@ -97,7 +97,34 @@ class UserSerializer(Serializer, TimedSerializerMixin):
         raise ValueError("Cannot create user via API")
 
     def update(self, instance, validated_data):
-        pass
+        """
+        Update an existing ``User`` instance.
+
+        :param instance:  the ``User`` instance.
+
+        :param validated_data:  validated client data. It can contain the 2
+                                optional fields listed belw.
+
+            name: The new name for the user.
+
+            share: A list of ``Share`` the user is in. If this list is empty,
+                   the user will no longer be in any ``Share``
+
+        :return: The updated ``User`` instance.
+        """
+        instance.name = validated_data.get('name', instance.name)
+        new_shares = validated_data.get('share')
+        if new_shares is not None:
+            new_shares = set(new_shares)
+            old_shares = set(instance.shares)
+            for to_add in new_shares - old_shares:
+                to_add.users.add(instance)
+                to_add.save()
+            for to_del in old_shares - new_shares:
+                to_del.users.remove(instance)
+                to_del.save()
+        instance.save()
+        return instance
 
 
 class ExpenseSerializer(Serializer, TimedSerializerMixin):
@@ -110,6 +137,11 @@ class ExpenseSerializer(Serializer, TimedSerializerMixin):
     resolved = serializers.BooleanField()
 
     def create(self, validated_data):
+        """
+
+        :param validated_data:
+        :return:
+        """
         pass
 
     def update(self, instance, validated_data):
