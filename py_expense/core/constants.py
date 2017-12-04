@@ -16,6 +16,4 @@ class ConstDict(dict):
 
 REQUIRED = ConstDict(required=True, allow_blank=False)
 MONEY = ConstDict(max_digits=19, decimal_places=10)
-STRING_SIZE = ConstDict(small=64, medium=256)
-
-SS = STRING_SIZE
+SS = STRING_SIZE = ConstDict(small=64, medium=256)
