@@ -115,3 +115,4 @@ docker-compose.yml
 
 # unignores
 !/py_expense/api/migrations/__init__.py
+!/py_expense/web/migrations/__init__.py
