@@ -1,13 +1,13 @@
 import pytest
 
-from api.models import User, Share
+from api.models import Share, User
 
 pytestmark = pytest.mark.django_db
 
 
 def test_user_shares_none():
     user = User.objects.create(name='foo')
-    share = Share.objects.create(name='bar', description='baz')
+    Share.objects.create(name='bar', description='baz')
     assert not user.shares
 
 
