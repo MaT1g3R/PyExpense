@@ -1,0 +1,7 @@
+[flake8]
+exclude =
+    .git,
+    __pycache__,
+    migrations
+    ./py_expense/py_expense/settings.py,
+    ./py_expense/manage.py,
