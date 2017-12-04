@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from rest_framework import serializers
 
 from expense_snek_api.core.constants import MONEY, REQUIRED, SS
-from .models import Share
+from .models import Expense, Share
 
 Serializer = serializers.Serializer
 
@@ -138,11 +140,80 @@ class ExpenseSerializer(Serializer, TimedSerializerMixin):
 
     def create(self, validated_data):
         """
+        Create a new ``Expense``
 
-        :param validated_data:
-        :return:
+        :param validated_data: validated client data. It contains these fields:
+
+            description: Description of the expense
+
+            share: The ``Share`` the expense is in
+
+            total: The total cost of this expense
+
+            paid_by: Which ``User`` paid for this expense
+
+            paid_for: A mapping of ``User`` to paid ratios.
+
+                      It should be in the form {User: (numerator, denominator)}
+
+        It may contain two optional fields:
+
+            created_at: The creation datetime of the expense, if not provided
+                        it defaults to now.
+
+            resolved: Wether this expense is resolved, if not
+                      provided, it defaults to False
+
+        :return: The new ``Expense`` created.
         """
-        pass
+        paid_for = validated_data.pop('paid_for')
+
+        if 'resolved' not in validated_data:
+            validated_data['resolved'] = False
+
+        if 'created_at' not in validated_data:
+            validated_data['created_at'] = datetime.now()
+
+        instance = Expense.objects.create(**validated_data)
+        instance.generate_ratio(paid_for)
+        return instance
 
     def update(self, instance, validated_data):
-        pass
+        """
+        Update an existing ``Expense``
+
+        :param instance: The instance to be updated.
+
+        :param validated_data: validated client data. It may contain the
+                               fields listed below.
+
+            description: Description of the expense.
+
+            share: The ``Share`` the expense belongs to.
+
+            total: The total cost of this expense.
+
+            paid_by: The ``User`` who paid for this expense.
+
+            paid_for: A mapping of ``User`` to paid ratios.
+
+                      It should be in the form {User: (numerator, denominator)}
+
+            resolved: Wether this expense is resolved.
+
+        :return: The updated expense instance.
+        """
+        paid_for = validated_data.pop('paid_for', None)
+
+        instance.description = validated_data.get('description',
+                                                  instance.description)
+        instance.share = validated_data.get('share', instance.share)
+        instance.total = validated_data.get('total', instance.total)
+        instance.paid_by = validated_data.get('paid_by', instance.paid_by)
+        instance.save()
+
+        if paid_for is not None:
+            for ratio in instance.ratio:
+                ratio.delete()
+            instance.generate_ratio(paid_for)
+        return instance
