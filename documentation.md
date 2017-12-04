@@ -525,13 +525,14 @@ Base URI: /api/v1/expenses/
 
     Request Body:
 
-    | Name        | Required | Type                | Description                                          |
-    | ----------- | -------- | ------------------- | ---------------------------------------------------- |
-    | description | No       | string              | Description of the expense                           |
-    | share       | Yes      | int                 | The share the expense is in                          |
-    | total       | Yes      | float               | The total cost of this expense                       |
-    | paid_by     | Yes      | int                 | The user ID of who paid for this expense             |
-    | paid_for    | Yes      | map[string: string] | A mapping of user IDs and paid ratios                |
+    | Name        | Required | Type                | Description                                                                |
+    | ----------- | -------- | ------------------- | -------------------------------------------------------------------------- |
+    | description | Yes      | string              | Description of the expense                                                 |
+    | share       | Yes      | int                 | The share the expense is in                                                |
+    | total       | Yes      | float               | The total cost of this expense                                             |
+    | paid_by     | Yes      | int                 | The user ID of who paid for this expense                                   |
+    | paid_for    | Yes      | map[string: string] | A mapping of user IDs and paid ratios                                      |
+    | created_at  | No       | int                 | Unix epoch of the time of the expense, if not provided it defaults to now  |
     | resolved    | No       | bool                | Wether this expense is resolved or not, if not provided, defaults to false |
 
     Note about the paid_for field:
@@ -553,18 +554,17 @@ Base URI: /api/v1/expenses/
     | success    | bool   | Boolean indicating success                     |
     | reason     | string | Failure reason                                 |
     | id         | int    | ID of expense created                          |
-    | created_at | int    | Unix epoch of the creation time of the expense |
 
     Examples:
 
-    `POST /api/v1/expenses/create JSON={"share": 1, "total": 10, "paid_by": 3, "paid_for": {"7": "1/1"}}`
+    `POST /api/v1/expenses/create JSON={"description": "foo", "share": 1, "total": 10, "paid_by": 3, "paid_for": {"7": "1/1"}}`
     ```json
-    {"success": true, "reason": null, id: 198, "created_at": 1511391924}
+    {"success": true, "reason": null, id: 198}
     ```
 
     `POST /api/v1/expenses/create JSON={"share": 28, "total": 178, "paid_by": 6, "paid_for": {"6": "1/2"}}`
     ```json
-    {"success": false, "reason": "paid_for ratio does not sum up to 1", id: null, "created_at": null}
+    {"success": false, "reason": "paid_for ratio does not sum up to 1", id: null}
     ```
 
 - **update**
