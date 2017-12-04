@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import QuerySet
 
 from expense_snek_api.core.constants import MONEY, SS
 
@@ -13,6 +14,13 @@ class AutoTimedMixin:
 class User(Model, AutoTimedMixin):
     name = models.CharField(unique=True, max_length=SS['small'])
     expenses = models.ManyToManyField('Expense')
+
+    @property
+    def shares(self) -> QuerySet:
+        """
+        Set of ``Share`` the user is in.
+        """
+        return Share.objects.filter(users__in=[self]).distinct()
 
 
 class Share(Model, AutoTimedMixin):
