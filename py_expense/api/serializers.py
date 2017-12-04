@@ -2,7 +2,7 @@ from datetime import datetime
 
 from rest_framework import serializers
 
-from expense_snek_api.core.constants import MONEY, REQUIRED, SS
+from core.constants import MONEY, REQUIRED, SS
 from .models import Expense, Share
 
 Serializer = serializers.Serializer

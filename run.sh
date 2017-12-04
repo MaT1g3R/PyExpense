@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-python3 expense_snek_api/manage.py migrate
-python3 expense_snek_api/manage.py runserver
+python3 py_expense/manage.py migrate
+python3 py_expense/manage.py runserver

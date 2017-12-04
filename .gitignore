@@ -107,11 +107,11 @@ venv.bak/
 .idea/
 
 # single file ignores
-expense_snek_api/settings.json
+py_expense/settings.json
 docker-compose.yml
 
 #directory ignores
-/expense_snek_api/api/migrations/
+/py_expense/api/migrations/
 
 # unignores
-!/expense_snek_api/api/migrations/__init__.py
+!/py_expense/api/migrations/__init__.py

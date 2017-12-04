@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import QuerySet
 
-from expense_snek_api.core.constants import MONEY, SS
+from core.constants import MONEY, SS
 
 Model = models.Model
 
