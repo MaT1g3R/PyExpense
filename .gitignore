@@ -111,8 +111,8 @@ py_expense/settings.json
 docker-compose.yml
 
 #directory ignores
-/py_expense/api/migrations/
+py_expense/api/migrations/
 
 # unignores
-!/py_expense/api/migrations/__init__.py
-!/py_expense/web/migrations/__init__.py
+!py_expense/api/migrations/__init__.py
+!py_expense/web/migrations/__init__.py
