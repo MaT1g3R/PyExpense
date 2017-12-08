@@ -117,12 +117,13 @@ class UserSerializer(Serializer, TimedSerializerMixin):
         instance.name = validated_data.get('name', instance.name)
         new_shares = validated_data.get('share')
         if new_shares is not None:
-            new_shares = set(new_shares)
-            old_shares = set(instance.shares)
-            for to_add in new_shares - old_shares:
+            old_shares = instance.shares
+            all_to_add = new_shares.difference(old_shares)
+            all_to_del = old_shares.difference(new_shares)
+            for to_add in all_to_add:
                 to_add.users.add(instance)
                 to_add.save()
-            for to_del in old_shares - new_shares:
+            for to_del in all_to_del:
                 to_del.users.remove(instance)
                 to_del.save()
         instance.save()
