@@ -1,3 +1,4 @@
+# noinspection PyUnresolvedReferences
 from py_expense.settings import *
 
 DATABASES = {
