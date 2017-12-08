@@ -1,6 +1,7 @@
 from random import choice
 from string import printable
 
+
 def random_str(length):
     return ''.join(choice(printable) for _ in range(length))
 

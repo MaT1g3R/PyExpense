@@ -5,3 +5,4 @@ exclude =
     migrations
     ./py_expense/py_expense/settings.py,
     ./py_expense/manage.py,
+    ./py_expense/tests/pytest_settings.py,
