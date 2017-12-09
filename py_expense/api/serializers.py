@@ -48,6 +48,7 @@ class ShareSerializer(TimedSerializer):
 
         :return: The created ``Share`` model
         """
+        validated_data = dict(validated_data)
         users = validated_data.pop('users', [])
         instance = Share.objects.create(**validated_data)
         for user in users:
@@ -167,6 +168,7 @@ class ExpenseSerializer(TimedSerializer):
 
         :return: The new ``Expense`` created.
         """
+        validated_data = dict(validated_data)
         paid_for = validated_data.pop('paid_for')
 
         if 'resolved' not in validated_data:
@@ -204,6 +206,7 @@ class ExpenseSerializer(TimedSerializer):
 
         :return: The updated expense instance.
         """
+        validated_data = dict(validated_data)
         paid_for = validated_data.pop('paid_for', None)
 
         instance.description = validated_data.get('description',
