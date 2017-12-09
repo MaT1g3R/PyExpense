@@ -1,25 +1,34 @@
+from random import uniform
+
 import pytest
 
-from api.models import Share, User
-from tests import rand_strs
+from api.models import Expense, ExpenseRatio, Share, User
+from tests import rand_strs, rand_time, random_str
 
 pytestmark = pytest.mark.django_db
-new_user = User.objects.create
-new_share = Share.objects.create
 
 
 def random_shares(amt):
-    return [new_share(name=n, description=d) for n, d in
+    return [Share.objects.create(name=n, description=d) for n, d in
             zip(rand_strs(12, amt, True), rand_strs(123, amt, False))]
 
 
 def random_users(amt):
-    return [new_user(name=n) for n in rand_strs(12, amt, True)]
+    return [User.objects.create(name=n) for n in rand_strs(12, amt, True)]
+
+
+def random_expenses(amt) -> tuple:
+    shares = random_shares(amt)
+    users = random_users(amt)
+    return [Expense.objects.create(
+        created_at=rand_time(False), description=random_str(123),
+        share=shares[i], paid_by=users[i], total=uniform(0.5, 1000.0)
+    ) for i in range(amt)], shares, users
 
 
 def test_user_shares_none():
     user, *_ = random_users(1)
-    new_share(name='bar', description='baz')
+    Share.objects.create(name='bar', description='baz')
     assert not user.shares
 
 
@@ -48,9 +57,30 @@ def test_user_shares_duplicate():
     assert set(user.shares) == {share}
 
 
+def test_expense_ratios_none():
+    (expense, *_), _, _ = random_expenses(1)
+    assert not expense.ratio
+
+
 def test_expense_ratios():
-    pass
+    (expense, *_), shares, users = random_expenses(5)
+    paid_for = {user: (1, 5) for user in users}
+    expense.generate_ratio(paid_for)
+    ratios = list(expense.ratio)
+
+    for ratio in ratios:
+        assert ratio.expense == expense
+
+    actual_paid_for = {ratio.user: (ratio.numerator, ratio.denominator) for
+                       ratio in ratios}
+    assert paid_for == actual_paid_for
 
 
-def test_expense_generate_ratios():
-    pass
+def test_expense_delete():
+    (expense, *_), shares, users = random_expenses(5)
+    paid_for = {user: (1, 5) for user in users}
+    expense.generate_ratio(paid_for)
+    id_ = expense.id
+    assert ExpenseRatio.objects.filter(expense=id_).count() == 5
+    expense.delete()
+    assert not ExpenseRatio.objects.filter(expense=id_)
