@@ -8,7 +8,7 @@ from .models import Expense, Share
 Serializer = serializers.Serializer
 
 
-class TimedSerializerMixin:
+class TimedSerializer(Serializer):
     created_at = serializers.IntegerField()
     updated_at = serializers.IntegerField()
 
@@ -25,7 +25,7 @@ class StringMap(serializers.DictField):
     child = serializers.CharField()
 
 
-class ShareSerializer(Serializer, TimedSerializerMixin):
+class ShareSerializer(TimedSerializer):
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(max_length=SS['small'], **REQUIRED)
     description = serializers.CharField(max_length=SS['medium'], **REQUIRED)
@@ -85,7 +85,7 @@ class ShareSerializer(Serializer, TimedSerializerMixin):
         return instance
 
 
-class UserSerializer(Serializer, TimedSerializerMixin):
+class UserSerializer(TimedSerializer):
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(max_length=SS['small'], **REQUIRED)
     shares = IntegerList()
@@ -130,7 +130,7 @@ class UserSerializer(Serializer, TimedSerializerMixin):
         return instance
 
 
-class ExpenseSerializer(Serializer, TimedSerializerMixin):
+class ExpenseSerializer(TimedSerializer):
     id = serializers.IntegerField(read_only=True)
     description = serializers.CharField(max_length=SS['medium'], **REQUIRED)
     share = serializers.IntegerField(required=True)

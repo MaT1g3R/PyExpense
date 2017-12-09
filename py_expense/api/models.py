@@ -6,12 +6,12 @@ from core.constants import MONEY, SS
 Model = models.Model
 
 
-class AutoTimedMixin:
+class AutoTimedModel(Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class User(Model, AutoTimedMixin):
+class User(AutoTimedModel):
     name = models.CharField(unique=True, max_length=SS['small'])
     expenses = models.ManyToManyField('Expense')
 
@@ -23,7 +23,7 @@ class User(Model, AutoTimedMixin):
         return Share.objects.filter(users__in=[self]).distinct()
 
 
-class Share(Model, AutoTimedMixin):
+class Share(AutoTimedModel):
     name = models.CharField(unique=True, max_length=SS['small'])
     description = models.CharField(max_length=SS['medium'])
     users = models.ManyToManyField(User)
