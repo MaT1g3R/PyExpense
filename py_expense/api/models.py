@@ -42,10 +42,18 @@ class Expense(Model):
     def ratio(self) -> QuerySet:
         return ExpenseRatio.objects.filter(expense=self)
 
-    def generate_ratio(self, paid_for):
-        for user, (top, bot) in paid_for.items():
-            ExpenseRatio.objects.create(user=user, numerator=top,
-                                        denominator=bot, expense=self)
+    def generate_ratio(self, paid_for: dict):
+        """
+        Generate a set of ``ExpenseRatio`` for this expense.
+
+        :param paid_for: A dict of User to a tuple representing a fraction
+                         like so {User: (numerator, denominator)}
+
+        :return: A list of the generated ``ExpenseRatio``
+        """
+        return [ExpenseRatio.objects.create(
+            user=user, numerator=top, denominator=bot, expense=self)
+            for user, (top, bot) in paid_for.items()]
 
 
 class ExpenseRatio(Model):
