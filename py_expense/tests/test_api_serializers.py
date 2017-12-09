@@ -1,7 +1,7 @@
 import pytest
 from django.utils import timezone
 
-from api.serializers import ShareSerializer
+from api.serializers import ShareSerializer, UserSerializer
 from tests import random_str
 from tests.test_api_models import random_shares, random_users
 
@@ -12,6 +12,20 @@ parametrize = pytest.mark.parametrize
 def update_data(instance, data, fields, fieldname, mutation: callable):
     if fields.get(fieldname):
         data[fieldname] = mutation(getattr(instance, fieldname))
+
+
+def assert_update_time(orig_update_time, instance, auto=True):
+    assert instance.updated_at > orig_update_time
+    if auto:
+        assert instance.updated_at > instance.created_at
+
+
+def assert_creation_time(instance, auto=True):
+    if auto:
+        assert abs(
+            (instance.created_at - instance.updated_at).total_seconds()) < 2
+        assert (timezone.now() - instance.created_at).total_seconds() < 5
+    assert (timezone.now() - instance.updated_at).total_seconds() < 5
 
 
 @parametrize('validated_data', [
@@ -26,10 +40,9 @@ def test_create_share(validated_data):
 
     share = serializer.create(validated_data)
 
+    assert_creation_time(share)
     assert share.name == validated_data['name']
     assert share.description == validated_data['description']
-    assert abs((share.created_at - share.updated_at).total_seconds()) < 2
-    assert (timezone.now() - share.created_at).total_seconds() < 5
     if 'users' not in validated_data:
         assert not share.users.all()
     else:
@@ -70,7 +83,7 @@ def test_update_share(orig_user_count, update_fields):
         user_out = orig_user_list[user_diff:]
 
     serializer.update(share, validated_data)
-    assert share.updated_at > updated_at
+    assert_update_time(updated_at, share)
 
     new_name = validated_data.get('name', share.name)
     assert new_name == share.name
@@ -87,8 +100,57 @@ def test_update_share(orig_user_count, update_fields):
         assert set(validated_data['users']) == set(new_users)
 
 
-def test_update_user():
-    pass
+def test_create_user():
+    serializer = UserSerializer()
+    try:
+        serializer.create({})
+    except ValueError:
+        assert True
+    else:
+        assert False
+
+
+@parametrize(
+    'orig_share_amt,share_add_amt,share_del_amt,update_name,clear_shares', [
+        (0, 0, 0, True, False),
+        (5, 3, 0, False, False),
+        (6, 0, 2, True, False),
+        (7, 3, 4, False, False),
+        (2, 0, 0, True, True),
+    ])
+def test_update_user(orig_share_amt, share_add_amt,
+                     share_del_amt, update_name, clear_shares):
+    serializer = UserSerializer()
+    user = random_users(1)[0]
+    orig_shares = random_shares(orig_share_amt)
+    orig_time = user.updated_at
+    for share in orig_shares:
+        share.users.add(user)
+
+    validated_data = {'name': user.name + random_str(2)} if update_name else {}
+
+    if clear_shares:
+        new_shares = []
+        deleted = list(orig_shares)
+        validated_data['share'] = []
+    elif share_add_amt + share_del_amt > 0:
+        added = random_shares(share_add_amt)
+        new_shares = orig_shares[:-share_del_amt] + added
+        deleted = orig_shares[-share_del_amt:]
+        validated_data['share'] = new_shares
+    else:
+        deleted = []
+        new_shares = list(orig_shares)
+
+    serializer.update(user, validated_data)
+    assert_update_time(orig_time, user)
+
+    assert user.name == validated_data.get('name', user.name)
+    user_shares = user.shares
+    assert user_shares.count() == len(new_shares)
+    assert set(user_shares) == set(new_shares)
+    for deleted_share in deleted:
+        assert deleted_share not in user_shares
 
 
 def test_create_expense():
