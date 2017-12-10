@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from core.constants import MONEY, SS
 
@@ -38,7 +39,7 @@ class Share(AutoTimedMixin, NamedMixin):
 
 
 class Expense(Model):
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     description = models.CharField(max_length=SS['medium'])
     share = models.ForeignKey(Share, on_delete=models.CASCADE)

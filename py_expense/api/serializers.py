@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from rest_framework import serializers
 
 from core.constants import MONEY, REQUIRED, SS
@@ -172,9 +170,6 @@ class ExpenseSerializer(TimedSerializer):
 
         if 'resolved' not in validated_data:
             validated_data['resolved'] = False
-
-        if 'created_at' not in validated_data:
-            validated_data['created_at'] = datetime.now()
 
         instance = Expense.objects.create(**validated_data)
         instance.generate_ratio(paid_for)
