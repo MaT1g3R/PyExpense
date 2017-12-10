@@ -1,17 +1,14 @@
+from random import uniform
+
 import pytest
 from django.utils import timezone
 
-from api.serializers import ShareSerializer, UserSerializer
+from api.serializers import ExpenseSerializer, ShareSerializer, UserSerializer
 from tests import random_str
-from tests.test_api_models import random_shares, random_users
+from tests.test_api_models import rand_time, random_shares, random_users
 
 pytestmark = pytest.mark.django_db
 parametrize = pytest.mark.parametrize
-
-
-def update_data(instance, data, fields, fieldname, mutation: callable):
-    if fields.get(fieldname):
-        data[fieldname] = mutation(getattr(instance, fieldname))
 
 
 def assert_update_time(orig_update_time, instance, auto=True):
@@ -52,28 +49,27 @@ def test_create_share(validated_data):
             assert share in user.shares
 
 
-@parametrize('orig_user_count,update_fields', [
-    (0, {'name': True, 'description': True}),
-    (5, {'name': True, 'description': True}),
-    (3, {'name': True, 'users': 4}),
-    (7, {'description': True, 'users': 2}),
-    (10, {'name': True, 'description': True, 'users': 0}),
-])
-def test_update_share(orig_user_count, update_fields):
+@parametrize('orig_user_count', [0, 5, 10])
+@parametrize('new_name', [True, False])
+@parametrize('new_des', [True, False])
+@parametrize('new_users_count', [0, 3, 5, 7])
+def test_update_share(orig_user_count, new_name, new_des, new_users_count):
     serializer = ShareSerializer()
     share = random_shares(1)[0]
     updated_at = share.updated_at
     users = random_users(orig_user_count)
     for user in users:
         share.users.add(user)
-    final_user_count = update_fields.pop('users', orig_user_count)
+
     validated_data = {}
-    for field in update_fields:
-        update_data(
-            share, validated_data, update_fields,
-            field, lambda x: x + random_str(3)
-        )
-    user_diff = final_user_count - orig_user_count
+    if new_name:
+        validated_data['name'] = share.name + random_str(3)
+    if new_des:
+        validated_data['description'] = share.description + random_str(3)
+    if new_users_count is not None:
+        user_diff = new_users_count - orig_user_count
+    else:
+        user_diff = 0
     user_out = []
     orig_user_list = list(share.users.all())
     if user_diff > 0:
@@ -93,7 +89,7 @@ def test_update_share(orig_user_count, update_fields):
 
     new_users = share.users.all()
     new_users_count = new_users.count()
-    assert final_user_count == new_users_count
+    assert new_users_count == new_users_count
     for user in user_out:
         assert user not in new_users
     if 'users' in validated_data:
@@ -110,16 +106,15 @@ def test_create_user():
         assert False
 
 
-@parametrize(
-    'orig_share_amt,share_add_amt,share_del_amt,update_name,clear_shares', [
-        (0, 0, 0, True, False),
-        (5, 3, 0, False, False),
-        (6, 0, 2, True, False),
-        (7, 3, 4, False, False),
-        (2, 0, 0, True, True),
-    ])
+@parametrize('orig_share_amt', [0, 5, 10])
+@parametrize('share_add_amt', [0, 3])
+@parametrize('share_del_amt', [2, 5, 10])
+@parametrize('update_name', [True, False])
 def test_update_user(orig_share_amt, share_add_amt,
-                     share_del_amt, update_name, clear_shares):
+                     share_del_amt, update_name):
+    if share_del_amt > orig_share_amt:
+        assert True
+        return
     serializer = UserSerializer()
     user = random_users(1)[0]
     orig_shares = random_shares(orig_share_amt)
@@ -129,11 +124,7 @@ def test_update_user(orig_share_amt, share_add_amt,
 
     validated_data = {'name': user.name + random_str(2)} if update_name else {}
 
-    if clear_shares:
-        new_shares = []
-        deleted = list(orig_shares)
-        validated_data['share'] = []
-    elif share_add_amt + share_del_amt > 0:
+    if share_add_amt + share_del_amt > 0:
         added = random_shares(share_add_amt)
         new_shares = orig_shares[:-share_del_amt] + added
         deleted = orig_shares[-share_del_amt:]
@@ -153,8 +144,41 @@ def test_update_user(orig_share_amt, share_add_amt,
         assert deleted_share not in user_shares
 
 
-def test_create_expense():
-    pass
+@parametrize('user_count', [1, 5])
+@parametrize('resolved', [True, False, None])
+@parametrize('timed', [True, False])
+def test_create_expense(user_count, resolved, timed):
+    users = random_users(user_count)
+    paid_for = {user: (1, len(users)) for user in users}
+    validated_data = {
+        'description': random_str(100),
+        'share': random_shares(1)[0],
+        'total': uniform(0.5, 1000.0),
+        'paid_by': users[0],
+        'paid_for': paid_for
+    }
+
+    if timed:
+        validated_data['created_at'] = rand_time(False)
+    if resolved is not None:
+        validated_data['resolved'] = resolved
+
+    serializer = ExpenseSerializer()
+    expense = serializer.create(validated_data)
+
+    if not timed:
+        assert_creation_time(expense)
+    if resolved is None:
+        assert expense.resolved is False
+
+    for key, val in validated_data.items():
+        if key == 'paid_for':
+            ratios = expense.ratio
+            assert ratios.count() == user_count
+            assert {ratio.user: (ratio.numerator, ratio.denominator)
+                    for ratio in ratios} == paid_for
+        else:
+            assert getattr(expense, key) == val
 
 
 def test_update_expense():
