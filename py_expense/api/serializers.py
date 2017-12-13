@@ -23,6 +23,16 @@ class StringMap(serializers.DictField):
     child = serializers.CharField()
 
 
+def update_attrs(instance, validated_data, *, key_set=None, exclude_set=None):
+    for key, val in validated_data.items():
+        if key_set is not None and key not in key_set:
+            continue
+        if exclude_set is not None and key in exclude_set:
+            continue
+        setattr(instance, key, val)
+    instance.save()
+
+
 class ShareSerializer(TimedSerializer):
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(max_length=SS['small'], **REQUIRED)
@@ -46,7 +56,7 @@ class ShareSerializer(TimedSerializer):
 
         :return: The created ``Share`` model
         """
-        validated_data = dict(validated_data)
+        validated_data = validated_data.copy()
         users = validated_data.pop('users', [])
         instance = Share.objects.create(**validated_data)
         for user in users:
@@ -72,15 +82,12 @@ class ShareSerializer(TimedSerializer):
 
         :return: The updated ``Share`` instance
         """
-        instance.name = validated_data.get('name', instance.name)
-        instance.description = validated_data.get('description',
-                                                  instance.description)
         users = validated_data.get('users')
         if users is not None:
             instance.users.clear()
             for user in users:
                 instance.users.add(user)
-        instance.save()
+        update_attrs(instance, validated_data, exclude_set={'users'})
         return instance
 
 
@@ -113,7 +120,6 @@ class UserSerializer(TimedSerializer):
 
         :return: The updated ``User`` instance.
         """
-        instance.name = validated_data.get('name', instance.name)
         new_shares = validated_data.get('share')
         if new_shares is not None:
             new_shares = set(new_shares)
@@ -124,7 +130,7 @@ class UserSerializer(TimedSerializer):
             for to_del in old_shares - new_shares:
                 to_del.users.remove(instance)
                 to_del.save()
-        instance.save()
+        update_attrs(instance, validated_data, key_set={'name'})
         return instance
 
 
@@ -165,7 +171,7 @@ class ExpenseSerializer(TimedSerializer):
 
         :return: The new ``Expense`` created.
         """
-        validated_data = dict(validated_data)
+        validated_data = validated_data.copy()
         paid_for = validated_data.pop('paid_for')
 
         if 'resolved' not in validated_data:
@@ -200,19 +206,10 @@ class ExpenseSerializer(TimedSerializer):
 
         :return: The updated expense instance.
         """
-        validated_data = dict(validated_data)
-        paid_for = validated_data.pop('paid_for', None)
-
-        instance.description = validated_data.get('description',
-                                                  instance.description)
-        instance.share = validated_data.get('share', instance.share)
-        instance.total = validated_data.get('total', instance.total)
-        instance.paid_by = validated_data.get('paid_by', instance.paid_by)
-        instance.resolved = validated_data.get('resolved', instance.resolved)
-        instance.save()
-
+        paid_for = validated_data.get('paid_for')
         if paid_for is not None:
             for ratio in instance.ratio:
                 ratio.delete()
             instance.generate_ratio(paid_for)
+        update_attrs(instance, validated_data, exclude_set={'paid_for'})
         return instance
