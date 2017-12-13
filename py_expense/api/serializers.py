@@ -208,6 +208,7 @@ class ExpenseSerializer(TimedSerializer):
         instance.share = validated_data.get('share', instance.share)
         instance.total = validated_data.get('total', instance.total)
         instance.paid_by = validated_data.get('paid_by', instance.paid_by)
+        instance.resolved = validated_data.get('resolved', instance.resolved)
         instance.save()
 
         if paid_for is not None:
