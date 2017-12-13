@@ -1,11 +1,18 @@
-from random import uniform
+"""
+Tests for API Serializers.
+
+The tests assume that input data is VALID, since data validation is not
+handled by the serializers.
+"""
+
+from random import choice, uniform
 
 import pytest
 from django.utils import timezone
 
 from api.serializers import ExpenseSerializer, ShareSerializer, UserSerializer
-from tests import random_str
-from tests.test_api_models import rand_time, random_shares, random_users
+from .utils import rand_time, random_expenses, random_shares, random_str, \
+    random_users
 
 pytestmark = pytest.mark.django_db
 parametrize = pytest.mark.parametrize
@@ -23,6 +30,17 @@ def assert_creation_time(instance, auto=True):
             (instance.created_at - instance.updated_at).total_seconds()) < 2
         assert (timezone.now() - instance.created_at).total_seconds() < 5
     assert (timezone.now() - instance.updated_at).total_seconds() < 5
+
+
+def assert_expense_items(validated_data, expense):
+    for key, val in validated_data.items():
+        if key == 'paid_for':
+            ratios = expense.ratio
+            assert ratios.count() == len(val)
+            assert {ratio.user: (ratio.numerator, ratio.denominator)
+                    for ratio in ratios} == val
+        else:
+            assert getattr(expense, key) == val
 
 
 @parametrize('validated_data', [
@@ -171,15 +189,41 @@ def test_create_expense(user_count, resolved, timed):
     if resolved is None:
         assert expense.resolved is False
 
-    for key, val in validated_data.items():
-        if key == 'paid_for':
-            ratios = expense.ratio
-            assert ratios.count() == user_count
-            assert {ratio.user: (ratio.numerator, ratio.denominator)
-                    for ratio in ratios} == paid_for
-        else:
-            assert getattr(expense, key) == val
+    assert_expense_items(validated_data, expense)
 
 
-def test_update_expense():
-    pass
+@parametrize('description', [True, False])
+@parametrize('share', [True, False])
+@parametrize('total', [True, False])
+@parametrize('paid_by', [True, False])
+@parametrize('paid_for', ['add', 'delete', None])
+@parametrize('resolved', [True, False, None])
+def test_update_expense(description, share, total, paid_by, paid_for,
+                        resolved):
+    (expense, *_), shares, users = random_expenses(5)
+    orig_paid_for = {user: (1, 3) for user in users[:-2]}
+    expense.generate_ratio(orig_paid_for)
+    orig_uptate_time = expense.updated_at
+
+    validated_data = {} if resolved is None else {'resolved': resolved}
+
+    if description:
+        validated_data['description'] = random_str(12) + expense.description
+    if share:
+        validated_data['share'] = shares[2]
+    if total:
+        validated_data['total'] = expense.total + uniform(0.5, 123.4)
+    if paid_by:
+        validated_data['paid_by'] = choice(tuple(
+            set(users).difference({expense.paid_by})
+        ))
+    if paid_for == 'add':
+        validated_data['paid_for'] = {user: (1, 5) for user in users}
+    elif paid_for == 'delete':
+        validated_data['paid_for'] = {user: (1, 2) for user in users[:-3]}
+
+    serializer = ExpenseSerializer()
+    serializer.update(expense, validated_data)
+
+    assert_update_time(orig_uptate_time, expense, False)
+    assert_expense_items(validated_data, expense)

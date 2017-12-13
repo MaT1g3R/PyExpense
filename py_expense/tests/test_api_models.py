@@ -1,29 +1,9 @@
-from random import uniform
-
 import pytest
 
-from api.models import Expense, ExpenseRatio, Share, User
-from tests import rand_strs, rand_time, random_str
+from api.models import ExpenseRatio, Share
+from .utils import random_expenses, random_shares, random_users
 
 pytestmark = pytest.mark.django_db
-
-
-def random_shares(amt):
-    return [Share.objects.create(name=n, description=d) for n, d in
-            zip(rand_strs(12, amt, True), rand_strs(123, amt, False))]
-
-
-def random_users(amt):
-    return [User.objects.create(name=n) for n in rand_strs(12, amt, True)]
-
-
-def random_expenses(amt) -> tuple:
-    shares = random_shares(amt)
-    users = random_users(amt)
-    return [Expense.objects.create(
-        created_at=rand_time(False), description=random_str(123),
-        share=shares[i], paid_by=users[i], total=uniform(0.5, 1000.0)
-    ) for i in range(amt)], shares, users
 
 
 def test_user_shares_none():
