@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone
 
-from core.constants import MONEY, SS
+from core import MONEY, SS
 
 Model = models.Model
 

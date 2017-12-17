@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.constants import MONEY, REQUIRED, SS
+from core import MONEY, REQUIRED, SS
 from .models import Expense, Share
 
 Serializer = serializers.Serializer
