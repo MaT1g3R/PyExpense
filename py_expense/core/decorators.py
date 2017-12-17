@@ -1,3 +1,6 @@
+"""
+Module containing useful decorators.
+"""
 __all__ = ['uri_params', 'method']
 
 from functools import partial, wraps

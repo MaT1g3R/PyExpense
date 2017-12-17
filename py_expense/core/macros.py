@@ -1,3 +1,6 @@
+"""
+Module containing miscellaneous utility functions.
+"""
 __all__ = ['strip_trailing_commas', 'positive_integer', 'list_of_pos_ints',
            'list_of_str', 'parse_parameters']
 
