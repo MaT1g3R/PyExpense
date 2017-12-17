@@ -36,8 +36,8 @@ Base URI: /api/v1/shares/
 
     Method: GET
 
-    The response is evaluated at an OR basis, so if both name and id are
-    provided, any share with name in the list OR id in the list are 
+    The response is evaluated at an AND basis, so if both name and id are
+    provided, any share with name in the list AND id in the list are 
     returned.
 
     Request Body:
@@ -277,9 +277,7 @@ Base URI: /api/v1/users/
 
     Method: Get
 
-    The response is evaluated at an OR basis, so if multiple fields are
-    provided in the request body, any user matching any of the fields area
-    returned.
+    The response is evaluated at an AND basis.
 
     Request Body:
 
@@ -439,9 +437,7 @@ Base URI: /api/v1/expenses/
 
     Method: GET
 
-    The response is evaluated at an OR basis, so if multiple fields are
-    provided in the request body, any expense matching any of the fields area
-    returned.
+    The response is evaluated at an AND basis.
 
     Request Body:
 
