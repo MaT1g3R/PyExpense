@@ -16,35 +16,22 @@
 
 """Module containing useful decorators."""
 
-__all__ = ['uri_params', 'method']
+__all__ = [
+    'method',
+]
 
 from functools import partial, wraps
+from typing import Iterable, Union
 
 from django.http import JsonResponse
 
-from .constants import ParseError
-from .macros import parse_parameters
 
-
-def uri_params(func=None, *, spec, method):
-    if not func:
-        return partial(uri_params, spec=spec, method=method)
-
-    @wraps(func)
-    def wrapper(request):
-        try:
-            params = parse_parameters(spec, getattr(request, method))
-        except ParseError as e:
-            return JsonResponse(
-                {'success': False, 'reason': e.args[0]}, status=400
-            )
-        else:
-            return func(request, params=params)
-
-    return wrapper
-
-
-def method(func=None, *, allowed):
+def method(func=None, *, allowed: Union[str, Iterable[str]]):
+    """
+    Decorate a view function to only allow certain methods.
+    :param func: The function to decorate.
+    :param allowed: The allowed method(s).
+    """
     if not func:
         return partial(method, allowed=allowed)
 
