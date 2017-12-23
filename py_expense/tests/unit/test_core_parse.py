@@ -72,8 +72,9 @@ def test_natural_list_empty():
 
 @given(str_list)
 def test_natural_list_fail(lst):
-    assume(not all(map(str.isdigit, lst)))
-    assume(all(map(str.rstrip, lst)))
+    __lst = ','.join(lst).rstrip(' ,').split(',')
+    assume(not all(map(str.isdigit, __lst)))
+    assume(all(map(str.rstrip, __lst)))
     with pytest.raises(ValueError):
         list_of_naturals(','.join(lst))
 
