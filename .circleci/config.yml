@@ -43,8 +43,15 @@ jobs:
           command: |
             . venv/bin/activate
             flake8 py_expense
-            pytest py_expense
+            py.test --cov=py_expense py_expense
 
+      - run:
+          name: Upload Coverage
+          command: |
+            . venv/bin/activate
+            pip install codecov
+            codecov
+            bash <(curl -s https://codecov.io/bash)
 
       - store_artifacts:
           path: test-reports
