@@ -13,6 +13,9 @@
 #
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""Pre defined strategies"""
+
 import hypothesis.strategies as st
 
 non_empty_str = st.text(min_size=1)
