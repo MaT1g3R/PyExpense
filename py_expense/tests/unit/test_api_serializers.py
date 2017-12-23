@@ -27,8 +27,9 @@ import pytest
 from django.utils import timezone
 
 from api.serializers import ExpenseSerializer, ShareSerializer, UserSerializer
-from .utils import rand_time, random_expenses, random_shares, random_str, \
-    random_users
+from tests.utils import (
+    rand_time, random_expenses, random_shares, random_str, random_users
+)
 
 pytestmark = pytest.mark.django_db
 parametrize = pytest.mark.parametrize

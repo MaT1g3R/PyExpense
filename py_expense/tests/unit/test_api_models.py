@@ -17,7 +17,7 @@
 import pytest
 
 from api.models import ExpenseRatio, Share
-from .utils import random_expenses, random_shares, random_users
+from tests.utils import random_expenses, random_shares, random_users
 
 pytestmark = pytest.mark.django_db
 
