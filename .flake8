@@ -1,8 +1,12 @@
 [flake8]
 exclude =
     .git,
+    .cache,
+    .circleci,
+    .idea,
     __pycache__,
     migrations
     ./py_expense/py_expense/settings.py,
     ./py_expense/manage.py,
     ./py_expense/tests/pytest_settings.py,
+    ./py_expense/core/__init__.py,

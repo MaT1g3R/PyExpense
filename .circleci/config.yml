@@ -1,0 +1,51 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.6.4
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "requirements.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r dev-requirements.txt
+
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+
+      - run:
+          name: Setup Tests
+          command: |
+              . venv/bin/activate
+              cd py_expense
+              cp example_settings.json settings.json
+              python manage.py makemigrations --settings=tests.pytest_settings
+              python manage.py migrate --settings=tests.pytest_settings
+
+      # run tests!
+      - run:
+          name: Run Tests
+          command: |
+            . venv/bin/activate
+            flake8 py_expense
+            pytest py_expense
+
+
+      - store_artifacts:
+          path: test-reports
+          destination: test-reports
