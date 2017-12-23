@@ -18,10 +18,11 @@
 
 __all__ = [
     'method',
+    'func_name',
 ]
 
 from functools import partial, wraps
-from typing import Iterable, Union
+from typing import Callable, Iterable, Union
 
 from django.http import JsonResponse
 
@@ -53,3 +54,21 @@ def method(func=None, *, allowed: Union[str, Iterable[str]]):
             )
 
     return wrapper
+
+
+def func_name(name: str):
+    """
+    Change the function __name__ attribute
+    :param name: The name to change to.
+    """
+
+    def decorate(func: Callable):
+        func.__name__ = name
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorate

@@ -24,11 +24,12 @@ __all__ = [
     'ParamSpec',
 ]
 
-from abc import ABC, abstractmethod
 from functools import partial, wraps
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional
+from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional
 
 from django.http import JsonResponse
+
+from .decorators import func_name
 
 
 class ParseError(ValueError):
@@ -38,76 +39,53 @@ class ParseError(ValueError):
     pass
 
 
-class ParamSpec(NamedTuple('ParamSpec', [('name', str), ('type', callable)])):
-    __slots__ = ()
+ParamSpec = NamedTuple('ParamSpec', [('name', str), ('type', Callable)])
 
 
-class Parser(ABC):
-    __slots__ = ()
+@func_name('Natural Number')
+def natural_number(s: str) -> int:
+    """
+    Try to convert a string to a natural numnber (n >= 0)
 
-    def __init__(self, name):
-        self.__name__ = name
-
-    @abstractmethod
-    def __call__(self, *args, **kwargs):
-        ...
-
-
-class NaturalNumber(Parser):
-    __slots__ = ()
-
-    def __call__(self, s) -> int:
-        """
-        Try to convert a string to a natural numnber (n >= 0)
-
-        :param s: the string to convert.
-        :return: the converted natural number.
-        :raises ValueError: If the conversion failed.
-        """
-        val = int(s)
-        if val < 0:
-            raise ValueError
-        return val
+    :param s: the string to convert.
+    :return: the converted natural number.
+    :raises ValueError: If the conversion failed.
+    """
+    val = int(s)
+    if val < 0:
+        raise ValueError
+    return val
 
 
-class NaturalList(Parser):
-    __slots__ = ()
-
-    def __call__(self, s: str) -> Optional[List[int]]:
-        """
-        Try to convert a comma seprated string to a list of natural numbers.
-        :param s: The comma seprated string.
-        :return: A list of natural numbers.
-        :raises ValueError: If the conversion failed.
-        """
-        s = strip_trailing(s, None, ',') if s else None
-        if not s:
-            return None
-        lst = s.split(',')
-        try:
-            res = [natural_number(x) for x in lst]
-        except (TypeError, ValueError):
-            raise ValueError
-        else:
-            return res
+@func_name('List of Natural Numbers')
+def list_of_naturals(s: str) -> Optional[List[int]]:
+    """
+    Try to convert a comma seprated string to a list of natural numbers.
+    :param s: The comma seprated string.
+    :return: A list of natural numbers.
+    :raises ValueError: If the conversion failed.
+    """
+    s = strip_trailing(s, None, ',') if s else None
+    if not s:
+        return None
+    lst = s.split(',')
+    try:
+        res = [natural_number(x) for x in lst]
+    except (TypeError, ValueError):
+        raise ValueError
+    else:
+        return res
 
 
-class StrList(Parser):
-    __slots__ = ()
-
-    def __call__(self, s: str) -> Optional[List[str]]:
-        """
-        Try to split a comma seprated string into a list.
-        :param s: The string to be split.
-        :return: The split list.
-        """
-        s = strip_trailing(s, None, ',') if s else None
-        return s.split(',') if s else None
-
-
-list_of_str = StrList('List of Strings')
-natural_number = NaturalNumber('Natural Number')
-list_of_naturals = NaturalList('List of Natural Numbers')
+@func_name('List of Strings')
+def list_of_str(s: str) -> Optional[List[str]]:
+    """
+    Try to split a comma seprated string into a list.
+    :param s: The string to be split.
+    :return: The split list.
+    """
+    s = strip_trailing(s, None, ',') if s else None
+    return s.split(',') if s else None
 
 
 def strip_trailing(s: str, *to_strip: Optional[str]) -> str:
