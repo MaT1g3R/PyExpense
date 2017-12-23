@@ -21,39 +21,41 @@ __all__ = [
     'func_name',
 ]
 
-from functools import partial, wraps
+from functools import wraps
 from typing import Callable, Iterable, Union
 
 from django.http import JsonResponse
 
 
-def method(func=None, *, allowed: Union[str, Iterable[str]]):
+def method(allowed: Union[str, Iterable[str]]):
     """
     Decorate a view function to only allow certain methods.
     :param func: The function to decorate.
     :param allowed: The allowed method(s).
     """
-    if not func:
-        return partial(method, allowed=allowed)
 
     if isinstance(allowed, str):
         allowed = {allowed}
 
-    @wraps(func)
-    def wrapper(request):
-        if request.method in allowed:
-            return func(request)
-        else:
-            allowed_lst = ', '.join(f"'{x}'" for x in allowed)
-            reason = (
-                f"Method '{request.method}' is not allowed. "
-                f"Allowed methods: {allowed_lst}"
-            )
-            return JsonResponse(
-                {'success': False, 'reason': reason}, status=404
-            )
+    def decorate(func):
 
-    return wrapper
+        @wraps(func)
+        def wrapper(request):
+            if request.method in allowed:
+                return func(request)
+            else:
+                allowed_lst = ', '.join(f"'{x}'" for x in allowed)
+                reason = (
+                    f"Method '{request.method}' is not allowed. "
+                    f"Allowed methods: {allowed_lst}"
+                )
+                return JsonResponse(
+                    {'success': False, 'reason': reason}, status=404
+                )
+
+        return wrapper
+
+    return decorate
 
 
 def func_name(name: str):

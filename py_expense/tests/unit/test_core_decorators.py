@@ -36,7 +36,7 @@ def _mock_view(request):
 def _assert_method(method_, allowed):
     request = HttpRequest()
     request.method = method_
-    wrapped = method(_mock_view, allowed=allowed)
+    wrapped = method(allowed=allowed)(_mock_view)
     res = wrapped(request)
     assert res == _mock_view(request)
 
@@ -44,7 +44,7 @@ def _assert_method(method_, allowed):
 def _assert_method_fail(wrong_method, allowed):
     request = HttpRequest()
     request.method = wrong_method
-    wrapped = method(_mock_view, allowed=allowed)
+    wrapped = method(allowed=allowed)(_mock_view)
     res = wrapped(request)
     assert res.status_code == 404
     json = loads(res.content)
