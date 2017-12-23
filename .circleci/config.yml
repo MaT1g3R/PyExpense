@@ -51,7 +51,6 @@ jobs:
             . venv/bin/activate
             pip install codecov
             codecov
-            bash <(curl -s https://codecov.io/bash)
 
       - store_artifacts:
           path: test-reports
