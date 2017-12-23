@@ -18,33 +18,26 @@ from copy import deepcopy
 from json import loads
 from random import randint
 
-import hypothesis.strategies as st
 from django.http import HttpRequest
 from hypothesis import given
 
 from core import func_name, method
+from tests.mocks import mock_view
+from tests.strategies import non_empty_str, non_empty_str_iter
 from tests.utils import random_str
-
-non_empty_str = st.text(min_size=1)
-non_empty_str_iter = st.iterables(non_empty_str)
-
-
-def _mock_view(request):
-    return request
 
 
 def _assert_method(method_, allowed):
     request = HttpRequest()
     request.method = method_
-    wrapped = method(allowed=allowed)(_mock_view)
-    res = wrapped(request)
-    assert res == _mock_view(request)
+    wrapped = method(allowed=allowed)(mock_view)
+    assert wrapped(request) == mock_view(request)
 
 
 def _assert_method_fail(wrong_method, allowed):
     request = HttpRequest()
     request.method = wrong_method
-    wrapped = method(allowed=allowed)(_mock_view)
+    wrapped = method(allowed=allowed)(mock_view)
     res = wrapped(request)
     assert res.status_code == 404
     json = loads(res.content)
@@ -84,7 +77,7 @@ def test_method_multiple_fail(it):
 
 @given(non_empty_str)
 def test_func_name(name):
-    wrapped = func_name(name)(_mock_view)
+    wrapped = func_name(name)(mock_view)
     req = HttpRequest()
-    assert wrapped.__name__ == _mock_view.__name__ == name
-    assert _mock_view(req) == wrapped(req)
+    assert wrapped.__name__ == mock_view.__name__ == name
+    assert mock_view(req) == wrapped(req)

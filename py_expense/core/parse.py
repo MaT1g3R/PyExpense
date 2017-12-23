@@ -51,6 +51,8 @@ def natural_number(s: str) -> int:
     :return: the converted natural number.
     :raises ValueError: If the conversion failed.
     """
+    if not s.isdigit():
+        raise ValueError
     val = int(s)
     if val < 0:
         raise ValueError
@@ -65,7 +67,8 @@ def list_of_naturals(s: str) -> Optional[List[int]]:
     :return: A list of natural numbers.
     :raises ValueError: If the conversion failed.
     """
-    s = strip_trailing(s, None, ',') if s else None
+
+    s = s.rstrip(' ,').rstrip()
     if not s:
         return None
     lst = s.split(',')
@@ -84,21 +87,8 @@ def list_of_str(s: str) -> Optional[List[str]]:
     :param s: The string to be split.
     :return: The split list.
     """
-    s = strip_trailing(s, None, ',') if s else None
+    s = s.rstrip(' ,').rstrip()
     return s.split(',') if s else None
-
-
-def strip_trailing(s: str, *to_strip: Optional[str]) -> str:
-    """
-    Strip trailing strings from a string.
-    :param s: The string to strip.
-    :param to_strip: All strings to be stripped from the string. If ``None``
-                     if provided, this will strip all trailing white space.
-    :return: The stripped string.
-    """
-    for c in to_strip:
-        s = s.rstrip() if c is None else s.rstrip(c)
-    return s
 
 
 def parse_parameters(param_specs: Iterable[ParamSpec],
