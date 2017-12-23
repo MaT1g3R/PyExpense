@@ -1,4 +1,4 @@
-# PyExpense
+# PyExpense [![CircleCI](https://circleci.com/gh/MaT1g3R/PyExpense.svg?style=shield)](https://circleci.com/gh/MaT1g3R/PyExpense)
 
 Django powered webapp to track shared expenses
 
