@@ -65,12 +65,11 @@ def func_name(name: str):
     """
 
     def decorate(func: Callable):
-        func.__name__ = name
-
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
+        wrapper.__name__ = name
         return wrapper
 
     return decorate

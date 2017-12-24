@@ -24,7 +24,7 @@ __all__ = [
     'ParamSpec',
 ]
 
-from functools import partial, wraps
+from functools import wraps
 from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional
 
 from django.http import JsonResponse
@@ -118,28 +118,29 @@ def parse_parameters(param_specs: Iterable[ParamSpec],
     return res
 
 
-def uri_params(func=None, *, spec: Iterable[ParamSpec], method: str):
+def uri_params(spec: Iterable[ParamSpec], method: str):
     """
     Decorate a view function to parse URI parameters.
 
     This will inject an argument with name ``params`` into the view function.
 
-    :param func: The function to decorate.
     :param spec: The URI parameter spec.
     :param method: The method name to get the request parameters from.
     """
-    if not func:
-        return partial(uri_params, spec=spec, method=method)
 
-    @wraps(func)
-    def wrapper(request):
-        try:
-            params = parse_parameters(spec, getattr(request, method))
-        except ParseError as e:
-            return JsonResponse(
-                {'success': False, 'reason': e.args[0]}, status=400
-            )
-        else:
-            return func(request, params=params)
+    def decorate(func):
 
-    return wrapper
+        @wraps(func)
+        def wrapper(request):
+            try:
+                params = parse_parameters(spec, getattr(request, method))
+            except ParseError as e:
+                return JsonResponse(
+                    {'success': False, 'reason': e.args[0]}, status=400
+                )
+            else:
+                return func(request, params=params)
+
+        return wrapper
+
+    return decorate
