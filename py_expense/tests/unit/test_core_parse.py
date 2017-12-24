@@ -14,12 +14,16 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from json import loads
+from unittest.mock import MagicMock
+
 import hypothesis.strategies as st
 import pytest
 from hypothesis import assume, given
 
-from core.parse import ParamSpec, list_of_naturals, list_of_str, \
-    natural_number, parse_parameters
+from core.parse import ParamSpec, ParseError, list_of_naturals, list_of_str, \
+    natural_number, parse_parameters, uri_params
+from tests.mocks import mock_view_params
 from tests.strategies import natural_list, str_list
 
 parametrize = pytest.mark.parametrize
@@ -31,6 +35,12 @@ all_specs = {
     'str_list': (list_of_str, 'asd,asd, ,uasdgi, asd,')
 }
 
+fail_specs = {
+    'int': (int, '-1.'),
+    'natural': (natural_number, '-1'),
+    'natural_list': (list_of_naturals, '0,1,999,213, -1'),
+}
+
 
 def filter_keys(func):
     for i, key in enumerate(all_specs):
@@ -38,8 +48,24 @@ def filter_keys(func):
             yield key
 
 
-key_combs = [filter_keys(lambda x: True), filter_keys(lambda x: x % 2),
+key_combs = [iter(all_specs), filter_keys(lambda x: x % 2),
              filter_keys(lambda x: not x % 2)]
+
+spec_list = [[ParamSpec(key, all_specs[key][0]) for key in keys]
+             for keys in key_combs] + [[]]
+
+param_list = [{key: all_specs[key][1] for key in keys}
+              for keys in key_combs] + [{}]
+
+
+def setup_param_fail(specs, params, fail):
+    fail_key, (fail_type, fail_val) = fail
+    specs = specs[:]
+    params = params.copy()
+    specs.append(ParamSpec(fail_key, fail_type))
+    specs = list(dict.fromkeys(specs))
+    params[fail_key] = fail_val
+    return specs, params, fail_key, fail_type
 
 
 @given(st.integers())
@@ -72,11 +98,12 @@ def test_natural_list_empty():
 
 @given(str_list)
 def test_natural_list_fail(lst):
-    __lst = ','.join(lst).rstrip(' ,').split(',')
-    assume(not all(map(str.isdigit, __lst)))
-    assume(all(map(str.rstrip, __lst)))
+    assume(not all(map(str.isdigit, lst)))
+    assume(all(map(str.rstrip, lst)))
+    s = ','.join(lst)
+    assume(s.rstrip(', ').rstrip())
     with pytest.raises(ValueError):
-        list_of_naturals(','.join(lst))
+        list_of_naturals(s)
 
 
 @given(str_list)
@@ -89,15 +116,11 @@ def test_str_list(s):
         assert list_of_str(s) == stripped.split(',')
 
 
-@parametrize('specs', [
-    [ParamSpec(key, all_specs[key][0]) for key in keys] for keys in
-    key_combs
-] + [[]])
-@parametrize('params', [
-    {key: all_specs[key][1] for key in keys} for keys in key_combs
-] + [{}])
+@parametrize('specs', spec_list)
+@parametrize('params', param_list)
 @parametrize('add', [True, False])
 def test_parse_params(specs, params, add):
+    params = params.copy()
     spec_dict = {name: type_ for name, type_ in specs}
     if add:
         params['asd'] = ValueError()
@@ -109,13 +132,40 @@ def test_parse_params(specs, params, add):
     }
 
 
-def test_parse_params_fail():
-    pass
+@parametrize('specs', spec_list)
+@parametrize('params', param_list)
+@parametrize('fail', list(fail_specs.items()))
+def test_parse_params_fail(specs, params, fail):
+    specs, params, fail_key, fail_type = setup_param_fail(specs, params, fail)
+    with pytest.raises(ParseError) as e:
+        parse_parameters(specs, params)
+    expected = f"Parameter '{fail_key}' must be type '{fail_type.__name__}'"
+    assert str(e.value) == expected
 
 
-def test_uri_params():
-    pass
+@parametrize('specs', spec_list)
+@parametrize('params', param_list)
+@parametrize('add', [True, False])
+@parametrize('method', ['GET', 'POST', 'PUT', 'DELETE'])
+def test_uri_params(specs, params, add, method):
+    params = params.copy()
+    if add:
+        params['asd'] = ValueError()
+    request = MagicMock()
+    setattr(request, method, params)
+    res = uri_params(specs, method)(mock_view_params)(request)
+    assert res == parse_parameters(specs, params)
 
 
-def test_uri_params_fail():
-    pass
+@parametrize('specs', spec_list)
+@parametrize('params', param_list)
+@parametrize('fail', list(fail_specs.items()))
+@parametrize('method', ['GET', 'POST', 'PUT', 'DELETE'])
+def test_uri_params_fail(specs, params, fail, method):
+    specs, params, fail_key, fail_type = setup_param_fail(specs, params, fail)
+    request = MagicMock()
+    setattr(request, method, params)
+    res = uri_params(specs, method)(mock_view_params)(request)
+    expected = f"Parameter '{fail_key}' must be type '{fail_type.__name__}'"
+    actual = loads(res.content)
+    assert actual == {'success': False, 'reason': expected}

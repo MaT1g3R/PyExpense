@@ -19,3 +19,7 @@
 
 def mock_view(request):
     return request
+
+
+def mock_view_params(request, *, params):
+    return params

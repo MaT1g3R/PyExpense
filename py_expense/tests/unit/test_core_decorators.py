@@ -79,5 +79,6 @@ def test_method_multiple_fail(it):
 def test_func_name(name):
     wrapped = func_name(name)(mock_view)
     req = HttpRequest()
-    assert wrapped.__name__ == mock_view.__name__ == name
+    assert wrapped.__name__ == name
+    assert mock_view.__name__ == 'mock_view'
     assert mock_view(req) == wrapped(req)
