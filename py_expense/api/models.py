@@ -13,6 +13,7 @@
 #
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+from math import fsum
 
 from django.db import models
 from django.db.models import QuerySet
@@ -22,47 +23,29 @@ from core import MONEY, STRING_SIZE as SS
 
 Model = models.Model
 
-
-class AutoTimedMixin(Model):
-    """
-    Mixin class for models with automatically generated creation time and
-    update time.
-
-    Fields:
-        created_at: A Django datetime object for creation time.
-        updated_at: A Dajango datetime object for latest update time.
-    """
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
+name_field = models.CharField(max_length=SS['small'])
+auto_created_at = models.DateTimeField(auto_now_add=True)
+auto_updateed_at = models.DateTimeField(auto_now=True)
 
 
-class NamedMixin(Model):
-    """
-    Mixin class for models that needs a name.
-
-    Fields:
-        name: A string for the name.
-    """
-    name = models.CharField(max_length=SS['small'])
-
-    class Meta:
-        abstract = True
-
-
-class User(AutoTimedMixin, NamedMixin):
+class User(Model):
     """
     User model.
 
-    Inherites fields from: AutoTimedMixin, NamedMixin
+    Fields:
+        name: A string for the name.
+        created_at: A Django datetime object for creation time.
+        updated_at:  A Dajango datetime object for latest update time.
 
     Relations:
         Many to many: Share
         One to Many: One User -> Many Expense
                      One User -> Many Expense Ratio
     """
+
+    name = name_field
+    created_at = auto_created_at
+    updated_at = auto_updateed_at
 
     @property
     def paid_by(self) -> QuerySet:
@@ -85,14 +68,19 @@ class User(AutoTimedMixin, NamedMixin):
         """
         return Share.objects.filter(users__in=[self]).distinct()
 
+    @property
+    def balance(self):
+        return 1
 
-class Share(AutoTimedMixin, NamedMixin):
+
+class Share(Model):
     """
     Share model.
 
-    Inherites fields from: AutoTimedMixin, NamedMixin
-
     Fields:
+        name: A string for the name.
+        created_at: A Django datetime object for creation time.
+        updated_at:  A Dajango datetime object for latest update time.
         description: A string for the description of this share.
         users: All users in this Share.
 
@@ -100,8 +88,19 @@ class Share(AutoTimedMixin, NamedMixin):
         Many to many: User
         One to many: One Share -> Many Expense
     """
+    name = name_field
+    created_at = auto_created_at
+    updated_at = auto_updateed_at
     description = models.CharField(max_length=SS['medium'])
     users = models.ManyToManyField(User)
+
+    @property
+    def expenses(self):
+        return Expense.objects.filter(share=self).distinct()
+
+    @property
+    def total(self):
+        return fsum(e.total for e in self.expenses)
 
 
 class Expense(Model):
@@ -123,7 +122,7 @@ class Expense(Model):
                      One User -> Many Expense
     """
     created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = auto_updateed_at
     description = models.CharField(max_length=SS['medium'])
     share = models.ForeignKey(Share, on_delete=models.CASCADE)
     total = models.DecimalField(**MONEY)
