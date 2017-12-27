@@ -21,12 +21,18 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import assume, given
 
-from core.parse import ParamSpec, ParseError, list_of_naturals, list_of_str, \
-    natural_number, parse_parameters, uri_params
+from core.parse import (
+    ParamSpec,
+    ParseError,
+    list_of_naturals,
+    list_of_str,
+    natural_number,
+    parse_parameters,
+    uri_params
+)
 from tests.mocks import mock_view_params
 from tests.strategies import natural_list, str_list
-
-parametrize = pytest.mark.parametrize
+from tests.utils import parametrize
 
 all_specs = {
     'int': (int, '-1'),
@@ -48,14 +54,11 @@ def filter_keys(func):
             yield key
 
 
-key_combs = [iter(all_specs), filter_keys(lambda x: x % 2),
-             filter_keys(lambda x: not x % 2)]
+key_combs = [iter(all_specs), filter_keys(lambda x: x % 2), filter_keys(lambda x: not x % 2)]
 
-spec_list = [[ParamSpec(key, all_specs[key][0]) for key in keys]
-             for keys in key_combs] + [[]]
+spec_list = [[ParamSpec(key, all_specs[key][0]) for key in keys] for keys in key_combs] + [[]]
 
-param_list = [{key: all_specs[key][1] for key in keys}
-              for keys in key_combs] + [{}]
+param_list = [{key: all_specs[key][1] for key in keys} for keys in key_combs] + [{}]
 
 
 def setup_param_fail(specs, params, fail):
@@ -124,8 +127,7 @@ def test_parse_params(specs, params, add):
     spec_dict = {name: type_ for name, type_ in specs}
     if add:
         params['asd'] = ValueError()
-    names_with_spec = {key: val for key, val in params.items() if
-                       key in spec_dict}
+    names_with_spec = {key: val for key, val in params.items() if key in spec_dict}
     assert parse_parameters(specs, params) == {
         key: spec_dict[key](val) for key, val in names_with_spec.items()
         if val is not None and spec_dict[key](val) is not None

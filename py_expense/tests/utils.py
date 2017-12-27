@@ -18,9 +18,12 @@ from datetime import datetime
 from random import choice, randint, uniform
 from string import printable
 
+import pytest
 from django.utils import timezone
 
 from api.models import Expense, Share, User
+
+parametrize = pytest.mark.parametrize
 
 
 def random_str(length):
