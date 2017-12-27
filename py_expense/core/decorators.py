@@ -49,9 +49,7 @@ def method(allowed: Union[str, Iterable[str]]):
                     f"Method '{request.method}' is not allowed. "
                     f"Allowed methods: {allowed_lst}"
                 )
-                return JsonResponse(
-                    {'success': False, 'reason': reason}, status=404
-                )
+                return JsonResponse({'success': False, 'reason': reason}, status=404)
 
         return wrapper
 
