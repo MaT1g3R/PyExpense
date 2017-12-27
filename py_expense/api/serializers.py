@@ -14,29 +14,31 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from datetime import datetime
+
 from rest_framework import serializers
+from rest_framework.serializers import ModelSerializer
 
-from core import MONEY, REQUIRED, STRING_SIZE as SS
-from .models import Expense, Share
+from .models import Expense, Share, User
+from .validators import validate_shares
 
-Serializer = serializers.Serializer
-
-
-class TimedSerializer(Serializer):
-    created_at = serializers.IntegerField()
-    updated_at = serializers.IntegerField()
+_base_fields = ('id', 'created_at', 'updated_at')
 
 
-class IntegerList(serializers.ListField):
-    child = serializers.IntegerField()
+class UnixTimeStamp(serializers.IntegerField, serializers.DateTimeField):
+    def to_internal_value(self, data):
+        data = serializers.IntegerField.to_internal_value(self, data)
+        try:
+            time = datetime.fromtimestamp(data)
+        except TypeError as e:
+            self.fail(str(e))
+        else:
+            return serializers.DateTimeField.to_internal_value(self, time)
 
-
-class BalanceMap(serializers.DictField):
-    child = serializers.DecimalField(**MONEY)
-
-
-class StringMap(serializers.DictField):
-    child = serializers.CharField()
+    def to_representation(self, value):
+        if not value:
+            return None
+        return int(value.timestamp())
 
 
 def update_attrs(instance, validated_data, *, key_set=None, exclude_set=None):
@@ -49,13 +51,63 @@ def update_attrs(instance, validated_data, *, key_set=None, exclude_set=None):
     instance.save()
 
 
-class ShareSerializer(TimedSerializer):
-    id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(max_length=SS['small'], **REQUIRED)
-    description = serializers.CharField(max_length=SS['medium'], **REQUIRED)
-    users = IntegerList()
-    expenses = IntegerList()
-    total = serializers.DecimalField(read_only=True, **MONEY)
+class UserSerializer(ModelSerializer):
+    created_at = UnixTimeStamp(read_only=True)
+    updated_at = UnixTimeStamp(read_only=True)
+
+    class Meta:
+        model = User
+        fields = _base_fields + ('name', 'shares', 'paid_by', 'paid_for', 'balance')
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'shares' in data:
+            ret['shares'] = validate_shares(data['shares'])
+        return ret
+
+    def create(self, validated_data):
+        """
+        For now, we do not allow user creation via the API.
+        """
+        raise ValueError("Cannot create user via API")
+
+    def update(self, instance, validated_data):
+        """
+        Update an existing ``User`` instance.
+
+        :param instance:  the ``User`` instance.
+
+        :param validated_data:  validated client data. It can contain the 2
+                                optional fields listed belw.
+
+            name: The new name for the user.
+
+            share: A list of ``Share`` the user is in. If this list is empty,
+                   the user will no longer be in any ``Share``
+
+        :return: The updated ``User`` instance.
+        """
+        new_shares = validated_data.get('shares')
+        if new_shares is not None:
+            new_shares = set(new_shares)
+            old_shares = set(instance.shares)
+            for to_add in new_shares - old_shares:
+                to_add.users.add(instance)
+                to_add.save()
+            for to_del in old_shares - new_shares:
+                to_del.users.remove(instance)
+                to_del.save()
+        update_attrs(instance, validated_data, key_set={'name'})
+        return instance
+
+
+class ShareSerializer(ModelSerializer):
+    created_at = UnixTimeStamp(read_only=True)
+    updated_at = UnixTimeStamp(read_only=True)
+
+    class Meta:
+        model = Share
+        fields = _base_fields + ('name', 'description', 'users', 'expenses', 'total')
 
     def create(self, validated_data):
         """
@@ -107,57 +159,13 @@ class ShareSerializer(TimedSerializer):
         return instance
 
 
-class UserSerializer(TimedSerializer):
-    id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(max_length=SS['small'], **REQUIRED)
-    shares = IntegerList()
-    expenses = IntegerList()
-    balance = BalanceMap()
+class ExpenseSerializer(ModelSerializer):
+    created_at = UnixTimeStamp(required=False)
+    updated_at = UnixTimeStamp(read_only=True)
 
-    def create(self, validated_data):
-        """
-        For now, we do not allow user creation via the API.
-        """
-        raise ValueError("Cannot create user via API")
-
-    def update(self, instance, validated_data):
-        """
-        Update an existing ``User`` instance.
-
-        :param instance:  the ``User`` instance.
-
-        :param validated_data:  validated client data. It can contain the 2
-                                optional fields listed belw.
-
-            name: The new name for the user.
-
-            share: A list of ``Share`` the user is in. If this list is empty,
-                   the user will no longer be in any ``Share``
-
-        :return: The updated ``User`` instance.
-        """
-        new_shares = validated_data.get('share')
-        if new_shares is not None:
-            new_shares = set(new_shares)
-            old_shares = set(instance.shares)
-            for to_add in new_shares - old_shares:
-                to_add.users.add(instance)
-                to_add.save()
-            for to_del in old_shares - new_shares:
-                to_del.users.remove(instance)
-                to_del.save()
-        update_attrs(instance, validated_data, key_set={'name'})
-        return instance
-
-
-class ExpenseSerializer(TimedSerializer):
-    id = serializers.IntegerField(read_only=True)
-    description = serializers.CharField(max_length=SS['medium'], **REQUIRED)
-    share = serializers.IntegerField(required=True)
-    total = serializers.DecimalField(**MONEY)
-    paid_by = serializers.IntegerField(required=True)
-    paid_for = StringMap()
-    resolved = serializers.BooleanField()
+    class Meta:
+        model = Expense
+        fields = _base_fields + ('description', 'share', 'total', 'paid_by', 'resolved', 'ratio')
 
     def create(self, validated_data):
         """
