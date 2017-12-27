@@ -10,3 +10,5 @@ exclude =
     ./py_expense/manage.py,
     ./py_expense/tests/pytest_settings.py,
     ./py_expense/core/__init__.py,
+
+max-line-length = 100

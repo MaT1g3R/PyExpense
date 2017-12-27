@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-Tests for API Serializers.
+Tests for serializers create/update.
 
 The tests assume that input data is VALID, since data validation is not
 handled by the serializers.
@@ -27,12 +27,10 @@ import pytest
 from django.utils import timezone
 
 from api.serializers import ExpenseSerializer, ShareSerializer, UserSerializer
-from tests.utils import (
-    rand_time, random_expenses, random_shares, random_str, random_users
-)
+from tests.utils import parametrize, rand_time, random_expenses, random_shares, random_str, \
+    random_users
 
 pytestmark = pytest.mark.django_db
-parametrize = pytest.mark.parametrize
 
 
 def assert_update_time(orig_update_time, instance, auto=True):
@@ -163,7 +161,7 @@ def test_update_user(orig_share_amt, share_add_amt,
         added = random_shares(share_add_amt)
         new_shares = orig_shares[:-share_del_amt] + added
         deleted = orig_shares[-share_del_amt:]
-        validated_data['share'] = new_shares
+        validated_data['shares'] = new_shares
     else:
         deleted = []
         new_shares = list(orig_shares)
