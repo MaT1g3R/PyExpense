@@ -51,7 +51,7 @@ def natural_number(s: str) -> int:
     :return: the converted natural number.
     :raises ValueError: If the conversion failed.
     """
-    if not s.isdigit():
+    if not isinstance(s, int) and not s.isdigit():
         raise ValueError
     val = int(s)
     if val < 0:
