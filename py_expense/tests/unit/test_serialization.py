@@ -28,7 +28,6 @@ from django.db.models import QuerySet
 from rest_framework.parsers import JSONParser
 from rest_framework.renderers import JSONRenderer
 
-from api.models import User
 from api.serializers import UserSerializer
 from core.constants import STRING_SIZE as SS
 from tests.utils import parametrize, random_expenses, random_shares, random_users
@@ -60,6 +59,19 @@ def _assert_serialize(serializer, obj):
     return serializer_data
 
 
+def _assert_round_trip(SerializerCls, obj):
+    serializer = SerializerCls(obj)
+    serializer_data = _assert_serialize(serializer, obj)
+    content = JSONRenderer().render(serializer_data)
+    stream = BytesIO(content)
+    data = {key: val for key, val in JSONParser().parse(stream).items()
+            if key not in serializer.Meta.read_only_fields}
+    new_serializer = SerializerCls(obj, data=data)
+    assert new_serializer.is_valid()
+    saved = new_serializer.save()
+    assert saved == obj.__class__.objects.get(pk=saved.id)
+
+
 @parametrize('paid_by_count', [0, 1, 10])
 @parametrize('paid_for_count', [0, 1, 10])
 @parametrize('share_count', [0, 1, 10])
@@ -79,25 +91,21 @@ def test_serialize_user(paid_by_count, paid_for_count, share_count):
                 exp.save()
             if i < paid_for_count:
                 exp.generate_ratio({user: (1, 1)})
-    serializer = UserSerializer(user)
-    serializer_data = _assert_serialize(serializer, user)
-    content = JSONRenderer().render(serializer_data)
-    stream = BytesIO(content)
-    data = JSONParser().parse(stream)
-    new_serializer = UserSerializer(user, data=data)
-    assert new_serializer.is_valid(True)
-    saved = new_serializer.save()
-    assert saved == User.objects.get(pk=saved.id)
+    _assert_round_trip(UserSerializer, user)
 
 
 @parametrize('name', [None, '', '1' * (SS['small'] + 1)])
-@parametrize('share', [None, [99]])
-def test_deserialize_user_fail(name, share):
-    if name is None and share is None:
+@parametrize('shares', [None, [1000]])
+@parametrize('paid_by', [None, [], [1, 2, 3]])
+@parametrize('paid_for', [None, [], [1, 3, 4]])
+@parametrize('balance', [None, {}, {"3": 1.0}])
+def test_deserialize_user_fail(name, shares, paid_by, paid_for, balance):
+    data = {key: val for key, val in
+            {'name': name, 'shares': shares, 'paid_by': paid_by,
+             'paid_for': paid_for, 'balance': balance}.items()
+            if val is not None}
+    if not data:
         return
     user = random_users(1)[0]
-    data = {'name': name} if name is not None else {}
-    if share is not None:
-        data['shares'] = share
     serializer = UserSerializer(user, data=data, partial=True)
     assert not serializer.is_valid()
