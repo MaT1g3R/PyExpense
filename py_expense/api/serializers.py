@@ -17,12 +17,22 @@
 from datetime import datetime
 
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import ModelSerializer
 
 from .models import Expense, Share, User
 from .validators import validate_shares
 
 _base_fields = ('id', 'created_at', 'updated_at')
+
+
+class ReadonlyMixin:
+    def _read_only(self, data):
+        errors = {key: 'read-only field.' for key in data
+                  if key in self.Meta.read_only_fields}
+        if errors:
+            raise ValidationError(errors)
+        return super().to_internal_value(data)
 
 
 class UnixTimeStamp(serializers.IntegerField, serializers.DateTimeField):
@@ -51,18 +61,18 @@ def update_attrs(instance, validated_data, *, key_set=None, exclude_set=None):
     instance.save()
 
 
-class UserSerializer(ModelSerializer):
+class UserSerializer(ReadonlyMixin, ModelSerializer):
     created_at = UnixTimeStamp(read_only=True)
     updated_at = UnixTimeStamp(read_only=True)
 
     class Meta:
         model = User
         fields = _base_fields + ('name', 'shares', 'paid_by', 'paid_for', 'balance')
+        read_only_fields = _base_fields + ('paid_by', 'paid_for', 'balance')
 
     def to_internal_value(self, data):
-        ret = super().to_internal_value(data)
-        if 'shares' in data:
-            ret['shares'] = validate_shares(data['shares'])
+        ret = super()._read_only(data)
+        ret['shares'] = validate_shares(data['shares'])
         return ret
 
     def create(self, validated_data):
