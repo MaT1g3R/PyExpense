@@ -39,7 +39,9 @@ class ParseError(ValueError):
     pass
 
 
-ParamSpec = NamedTuple('ParamSpec', [('name', str), ('type', Callable)])
+class ParamSpec(NamedTuple):
+    name: str
+    type: Callable
 
 
 @func_name('Natural Number')
