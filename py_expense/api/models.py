@@ -14,6 +14,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from math import fsum
+from typing import Dict
 
 from django.db import models
 from django.db.models import QuerySet
@@ -49,28 +50,24 @@ class User(Model):
 
     @property
     def paid_by(self) -> QuerySet:
-        """
-        Return a QuerySet of ``Expense`` paid by this user.
-        """
+        """Return a QuerySet of ``Expense`` paid by this user."""
         return Expense.objects.filter(paid_by=self).distinct()
 
     @property
     def paid_for(self) -> QuerySet:
-        """
-        Return a QuerySet of ``ExpenseRatio`` for this user.
-        """
+        """Return a QuerySet of ``ExpenseRatio`` for this user."""
         return ExpenseRatio.objects.filter(user=self).distinct()
 
     @property
     def shares(self) -> QuerySet:
-        """
-        Returns a QuerySet of ``Share`` the user is in.
-        """
+        """Returns a QuerySet of ``Share`` the user is in."""
         return Share.objects.filter(users__in=[self]).distinct()
 
     @property
-    def balance(self):
-        return 1
+    def balance(self) -> Dict['User', float]:
+        """Returns a dict of {User: amount owned}"""
+        # TODO: implement this
+        return {}
 
 
 class Share(Model):
