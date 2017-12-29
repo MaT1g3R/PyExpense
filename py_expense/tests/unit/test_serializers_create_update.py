@@ -131,12 +131,8 @@ def test_update_share(orig_user_count, new_name, new_des, new_users_count):
 
 def test_create_user():
     serializer = UserSerializer()
-    try:
+    with pytest.raises(ValueError):
         serializer.create({})
-    except ValueError:
-        assert True
-    else:
-        assert False
 
 
 @parametrize('orig_share_amt', [0, 5, 10])
@@ -146,7 +142,6 @@ def test_create_user():
 def test_update_user(orig_share_amt, share_add_amt,
                      share_del_amt, update_name):
     if share_del_amt > orig_share_amt:
-        assert True
         return
     serializer = UserSerializer()
     user = random_users(1)[0]
