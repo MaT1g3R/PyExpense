@@ -28,11 +28,16 @@ from django.db.models import QuerySet
 from rest_framework.parsers import JSONParser
 from rest_framework.renderers import JSONRenderer
 
-from api.serializers import UserSerializer
+from api.serializers import ShareSerializer, UserSerializer
 from core.constants import STRING_SIZE as SS
-from tests.utils import parametrize, random_expenses, random_shares, random_users
+from tests.utils import decorators, flatten, parametrize, random_expenses, random_shares, \
+    random_users
 
 pytestmark = pytest.mark.django_db
+
+name_param = parametrize('name', [None, '', '1' * (SS['small'] + 1)])
+created_at_param = parametrize('created_at', [None, 1])
+updated_at_param = parametrize('updated_at', [None, 2])
 
 
 def _convert_time(obj, key):
@@ -55,7 +60,9 @@ def _assert_serialize(serializer, obj):
     obj_data = {key: _convert_time(obj, key) for key in serializer.__class__.Meta.fields}
     serializer_data = {key: _convert_queryset(val) for key, val in serializer.data.items()}
     obj_data = {key: _convert_queryset(val) for key, val in obj_data.items()}
-    assert serializer_data == obj_data
+    for key, val in serializer_data.items():
+        obj_val = obj_data[key]
+        assert val == obj_val or val == [x.id for x in obj_val.get_queryset().all().distinct()]
     return serializer_data
 
 
@@ -67,9 +74,17 @@ def _assert_round_trip(SerializerCls, obj):
     data = {key: val for key, val in JSONParser().parse(stream).items()
             if key not in serializer.Meta.read_only_fields}
     new_serializer = SerializerCls(obj, data=data)
-    assert new_serializer.is_valid()
+    assert new_serializer.is_valid(True)
     saved = new_serializer.save()
     assert saved == obj.__class__.objects.get(pk=saved.id)
+
+
+def _assert_fail(random_func, Serializer, kwargs):
+    data = {key: val for key, val in kwargs.items() if val is not None}
+    obj = next(flatten(random_func(1)))
+    serializer = Serializer(obj, data=data, partial=True)
+    valid = serializer.is_valid()
+    assert not valid or (valid and not data)
 
 
 @parametrize('paid_by_count', [0, 1, 10])
@@ -94,18 +109,33 @@ def test_serialize_user(paid_by_count, paid_for_count, share_count):
     _assert_round_trip(UserSerializer, user)
 
 
-@parametrize('name', [None, '', '1' * (SS['small'] + 1)])
 @parametrize('shares', [None, [1000]])
 @parametrize('paid_by', [None, [], [1, 2, 3]])
 @parametrize('paid_for', [None, [], [1, 3, 4]])
 @parametrize('balance', [None, {}, {"3": 1.0}])
-def test_deserialize_user_fail(name, shares, paid_by, paid_for, balance):
-    data = {key: val for key, val in
-            {'name': name, 'shares': shares, 'paid_by': paid_by,
-             'paid_for': paid_for, 'balance': balance}.items()
-            if val is not None}
-    if not data:
-        return
-    user = random_users(1)[0]
-    serializer = UserSerializer(user, data=data, partial=True)
-    assert not serializer.is_valid()
+@decorators(name_param, created_at_param, updated_at_param)
+def test_deserialize_user_fail(name, shares, paid_by, paid_for, balance, created_at, updated_at):
+    _assert_fail(random_users, UserSerializer, locals())
+
+
+@parametrize('user_count', [0, 1, 10])
+@parametrize('expense_count', [0, 1, 10])
+def test_serialize_share(user_count, expense_count):
+    share = random_shares(1)[0]
+    if user_count:
+        users = random_users(user_count)
+        for user in users:
+            share.users.add(user)
+            share.save()
+    if expense_count:
+        random_expenses(expense_count, share)
+    _assert_round_trip(ShareSerializer, share)
+
+
+@parametrize('total', [None, 0.1, -1, ''])
+@parametrize('expenses', [None, [], [1, 2], ''])
+@parametrize('users', [None, [1000]])
+@parametrize('description', [None, '', 'x' * (SS['medium'] + 1)])
+@decorators(name_param, created_at_param, updated_at_param)
+def test_deserialize_share_fail(name, created_at, updated_at, total, expenses, users, description):
+    _assert_fail(random_shares, ShareSerializer, locals())
