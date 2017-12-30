@@ -15,6 +15,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
+from functools import wraps
 from random import choice, randint, uniform
 from string import printable
 
@@ -57,10 +58,36 @@ def random_users(amt):
     return [User.objects.create(name=n) for n in rand_strs(12, amt, True)]
 
 
-def random_expenses(amt) -> tuple:
+def random_expenses(amt, share=None) -> tuple:
     shares = random_shares(amt)
     users = random_users(amt)
     return [Expense.objects.create(
         created_at=rand_time(False), description=random_str(123),
-        share=shares[i], paid_by=users[i], total=uniform(0.5, 1000.0)
+        share=share or shares[i], paid_by=users[i], total=uniform(0.5, 1000.0)
     ) for i in range(amt)], shares, users
+
+
+def flatten(it):
+    if isinstance(it, str):
+        yield it
+    else:
+        try:
+            it = (x for x in it)
+        except TypeError:
+            yield it
+        else:
+            yield from (flatten(x) for x in it)
+
+
+def decorators(*dec_list):
+    def decorate(func):
+        for dec in dec_list:
+            func = dec(func)
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorate
