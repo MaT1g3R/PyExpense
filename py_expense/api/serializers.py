@@ -21,7 +21,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import ModelSerializer
 
 from .models import Expense, Share, User
-from .validators import validate_shares
+from .validators import validate_shares, validate_users
 
 _base_fields = ('id', 'created_at', 'updated_at')
 
@@ -72,7 +72,8 @@ class UserSerializer(ReadonlyMixin, ModelSerializer):
 
     def to_internal_value(self, data):
         ret = super()._read_only(data)
-        ret['shares'] = validate_shares(data['shares'])
+        if 'shares' in data:
+            ret['shares'] = validate_shares(data['shares'])
         return ret
 
     def create(self, validated_data):
@@ -111,13 +112,21 @@ class UserSerializer(ReadonlyMixin, ModelSerializer):
         return instance
 
 
-class ShareSerializer(ModelSerializer):
+class ShareSerializer(ReadonlyMixin, ModelSerializer):
     created_at = UnixTimeStamp(read_only=True)
     updated_at = UnixTimeStamp(read_only=True)
 
     class Meta:
         model = Share
         fields = _base_fields + ('name', 'description', 'users', 'expenses', 'total')
+        read_only_fields = _base_fields + ('total', 'expenses')
+        extra_kwargs = {'users': {'allow_empty': True}}
+
+    def to_internal_value(self, data):
+        ret = super()._read_only(data)
+        if 'users' in data:
+            ret['users'] = validate_users(data['users'])
+        return ret
 
     def create(self, validated_data):
         """
