@@ -92,11 +92,11 @@ class Share(Model):
     users = models.ManyToManyField(User)
 
     @property
-    def expenses(self):
+    def expenses(self) -> QuerySet:
         return Expense.objects.filter(share=self).distinct()
 
     @property
-    def total(self):
+    def total(self) -> float:
         return fsum(e.total for e in self.expenses)
 
 
