@@ -185,6 +185,14 @@ class ExpenseSerializer(ModelSerializer):
     class Meta:
         model = Expense
         fields = _base_fields + ('description', 'share', 'total', 'paid_by', 'resolved', 'ratio')
+        read_only_fields = ('id', 'updated_at')
+
+    def to_representation(self, instance):
+        res = super().to_representation(instance)
+        total = res.get('total')
+        if total is not None:
+            res['total'] = float(total)
+        return res
 
     def create(self, validated_data):
         """
