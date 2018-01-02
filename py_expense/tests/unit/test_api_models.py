@@ -53,11 +53,6 @@ def test_user_shares_duplicate():
     assert set(user.shares) == {share}
 
 
-def test_expense_ratios_none():
-    (expense, *_), _, _ = random_expenses(1)
-    assert not expense.ratio
-
-
 def test_expense_ratios():
     (expense, *_), shares, users = random_expenses(5)
     paid_for = {user: (1, 5) for user in users}
