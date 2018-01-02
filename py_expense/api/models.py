@@ -152,6 +152,8 @@ class Expense(Model):
 
         :return: A list of the generated ``ExpenseRatio``
         """
+        if not paid_for:
+            raise ValueError('paid_for cannot be empty.')
         for ratio in self.ratio:
             ratio.delete()
         return [ExpenseRatio.objects.create(
