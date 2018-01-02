@@ -13,8 +13,9 @@
 #
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from math import fsum
-from typing import Dict
+from typing import Dict, Tuple
 
 from django.db import models
 from django.db.models import QuerySet
@@ -68,6 +69,9 @@ class User(Model):
         """Returns a dict of {User: amount owned}"""
         # TODO: implement this
         return {}
+
+
+PaidFor = Dict[User, Tuple[int, int]]
 
 
 class Share(Model):
@@ -126,6 +130,12 @@ class Expense(Model):
     paid_by = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     resolved = models.BooleanField(default=False)
 
+    @classmethod
+    def new(cls, *, paid_for: PaidFor, **kwargs):
+        instance = cls.objects.create(**kwargs)
+        instance.generate_ratio(paid_for)
+        return instance
+
     @property
     def ratio(self) -> QuerySet:
         """
@@ -133,7 +143,7 @@ class Expense(Model):
         """
         return ExpenseRatio.objects.filter(expense=self)
 
-    def generate_ratio(self, paid_for: dict):
+    def generate_ratio(self, paid_for: PaidFor):
         """
         Generate a set of ``ExpenseRatio`` for this expense.
 
@@ -142,6 +152,8 @@ class Expense(Model):
 
         :return: A list of the generated ``ExpenseRatio``
         """
+        for ratio in self.ratio:
+            ratio.delete()
         return [ExpenseRatio.objects.create(
             user=user, numerator=top, denominator=bot, expense=self)
             for user, (top, bot) in paid_for.items()]

@@ -61,9 +61,10 @@ def random_users(amt):
 def random_expenses(amt, share=None) -> tuple:
     shares = random_shares(amt)
     users = random_users(amt)
-    return [Expense.objects.create(
+    return [Expense.new(
         created_at=rand_time(False), description=random_str(123),
-        share=share or shares[i], paid_by=users[i], total=uniform(0.5, 1000.0)
+        share=share or shares[i], paid_by=users[i], total=uniform(0.5, 1000.0),
+        paid_for={users[i]: (1, 1)}
     ) for i in range(amt)], shares, users
 
 

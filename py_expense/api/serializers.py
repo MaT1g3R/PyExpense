@@ -251,8 +251,6 @@ class ExpenseSerializer(ModelSerializer):
         """
         paid_for = validated_data.get('paid_for')
         if paid_for is not None:
-            for ratio in instance.ratio:
-                ratio.delete()
             instance.generate_ratio(paid_for)
         update_attrs(instance, validated_data, exclude_set={'paid_for'})
         return instance
