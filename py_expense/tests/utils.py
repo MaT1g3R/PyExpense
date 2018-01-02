@@ -58,14 +58,22 @@ def random_users(amt):
     return [User.objects.create(name=n) for n in rand_strs(12, amt, True)]
 
 
-def random_expenses(amt, share=None) -> tuple:
+def random_expenses(amt, *, share=None, created_at=None, resolved=None) -> tuple:
     shares = random_shares(amt)
     users = random_users(amt)
-    return [Expense.new(
-        created_at=rand_time(False), description=random_str(123),
-        share=share or shares[i], paid_by=users[i], total=uniform(0.5, 1000.0),
-        paid_for={users[i]: (1, 1)}
-    ) for i in range(amt)], shares, users
+    res = []
+    for i in range(amt):
+        kwargs = dict(
+            created_at=created_at, description=random_str(123),
+            share=share or shares[i], paid_by=users[i], total=uniform(0.5, 1000.0),
+            paid_for={users[i]: (1, 1)}, resolved=resolved
+        )
+        if created_at is None:
+            del kwargs['created_at']
+        if resolved is None:
+            del kwargs['resolved']
+        res.append(Expense.new(**kwargs))
+    return res, shares, users
 
 
 def flatten(it):
