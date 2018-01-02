@@ -28,10 +28,10 @@ from django.db.models import QuerySet
 from rest_framework.parsers import JSONParser
 from rest_framework.renderers import JSONRenderer
 
-from api.serializers import ShareSerializer, UserSerializer
+from api.serializers import ExpenseSerializer, ShareSerializer, UserSerializer
 from core.constants import STRING_SIZE as SS
-from tests.utils import decorators, flatten, parametrize, random_expenses, random_shares, \
-    random_users
+from tests.utils import (decorators, flatten, parametrize, rand_time, random_expenses,
+                         random_shares, random_users)
 
 pytestmark = pytest.mark.django_db
 
@@ -51,8 +51,12 @@ def _convert_time(obj, key):
 
 
 def _convert_queryset(val):
+    if hasattr(val, 'pk'):
+        return val.pk
     if isinstance(val, QuerySet):
         return [x.id for x in val]
+    if hasattr(val, 'get_queryset'):
+        return [x.id for x in val.get_queryset().all().distinct()]
     return val
 
 
@@ -60,9 +64,11 @@ def _assert_serialize(serializer, obj):
     obj_data = {key: _convert_time(obj, key) for key in serializer.__class__.Meta.fields}
     serializer_data = {key: _convert_queryset(val) for key, val in serializer.data.items()}
     obj_data = {key: _convert_queryset(val) for key, val in obj_data.items()}
-    for key, val in serializer_data.items():
-        obj_val = obj_data[key]
-        assert val == obj_val or val == [x.id for x in obj_val.get_queryset().all().distinct()]
+    for key, val in obj_data.items():
+        if isinstance(val, float):
+            assert abs(val - serializer_data[key]) < 0.000000001
+        else:
+            assert val == serializer_data[key]
     return serializer_data
 
 
@@ -77,6 +83,7 @@ def _assert_round_trip(SerializerCls, obj):
     assert new_serializer.is_valid(True)
     saved = new_serializer.save()
     assert saved == obj.__class__.objects.get(pk=saved.id)
+    return saved
 
 
 def _assert_fail(random_func, Serializer, kwargs):
@@ -128,7 +135,7 @@ def test_serialize_share(user_count, expense_count):
             share.users.add(user)
             share.save()
     if expense_count:
-        random_expenses(expense_count, share)
+        random_expenses(expense_count, share=share)
     _assert_round_trip(ShareSerializer, share)
 
 
@@ -139,3 +146,26 @@ def test_serialize_share(user_count, expense_count):
 @decorators(name_param, created_at_param, updated_at_param)
 def test_deserialize_share_fail(name, created_at, updated_at, total, expenses, users, description):
     _assert_fail(random_shares, ShareSerializer, locals())
+
+
+@parametrize('created_at', [True, False])
+@parametrize('resolved', [True, False, None])
+@parametrize('paid_for_count', [1, 10])
+def test_serialize_expense(created_at, resolved, paid_for_count):
+    if created_at:
+        (expense,), (share,), (user,) = random_expenses(1, resolved=resolved,
+                                                        created_at=rand_time(False))
+    else:
+        (expense,), (share,), (user,) = random_expenses(1, resolved=resolved)
+    paid_for_diff = paid_for_count - 1
+    paid_for_users = random_users(paid_for_diff)
+    for user in paid_for_users:
+        share.users.add(user)
+        share.save()
+    paid_for = {u: (1, paid_for_count) for u in paid_for_users + [user]}
+    expense.generate_ratio(paid_for)
+    _assert_round_trip(ExpenseSerializer, expense)
+
+
+def test_deserialize_expense_fail():
+    pass
