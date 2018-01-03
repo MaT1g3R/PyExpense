@@ -31,11 +31,6 @@ auto_created_at = models.DateTimeField(auto_now_add=True)
 auto_updateed_at = models.DateTimeField(auto_now=True)
 
 
-class MoneyField(models.DecimalField):
-    def __init__(self):
-        super().__init__(**MONEY, validators=[MinValueValidator(0)])
-
-
 class User(Model):
     """
     User model.
@@ -132,7 +127,7 @@ class Expense(Model):
     updated_at = auto_updateed_at
     description = models.CharField(max_length=SS['medium'])
     share = models.ForeignKey(Share, on_delete=models.CASCADE)
-    total = MoneyField()
+    total = models.DecimalField(**MONEY, validators=[MinValueValidator(0)])
     paid_by = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     resolved = models.BooleanField(default=False)
 
