@@ -19,6 +19,7 @@
 __all__ = [
     'uri_params',
     'natural_number',
+    'pos_int',
     'list_of_naturals',
     'list_of_str',
     'ParamSpec',
@@ -54,10 +55,25 @@ def natural_number(s: str) -> int:
     :raises ValueError: If the conversion failed.
     """
     if not isinstance(s, int) and not s.isdigit():
-        raise ValueError
+        raise ValueError('Fail.')
     val = int(s)
     if val < 0:
-        raise ValueError
+        raise ValueError('Cannot be negative.')
+    return val
+
+
+@func_name('Positive Integer')
+def pos_int(s: str) -> int:
+    """
+    Try to convert a string to a positive integer (n >= 1)
+
+    :param s: the string to convert.
+    :return: the converted natural number.
+    :raises ValueError: If the conversion failed.
+    """
+    val = natural_number(s)
+    if val == 0:
+        raise ValueError('Must be positive.')
     return val
 
 
@@ -76,8 +92,8 @@ def list_of_naturals(s: str) -> Optional[List[int]]:
     lst = s.split(',')
     try:
         res = [natural_number(x) for x in lst]
-    except (TypeError, ValueError):
-        raise ValueError
+    except (TypeError, ValueError) as e:
+        raise ValueError(str(e))
     else:
         return res
 
