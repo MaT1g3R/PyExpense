@@ -22,9 +22,11 @@ we will only be testing data validation for (de)serialization.
 """
 
 from io import BytesIO
+from itertools import chain
 
 import pytest
 from django.db.models import QuerySet
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser
 from rest_framework.renderers import JSONRenderer
 
@@ -36,8 +38,10 @@ from tests.utils import (decorators, flatten, parametrize, rand_time, random_exp
 pytestmark = pytest.mark.django_db
 
 name_param = parametrize('name', [None, '', '1' * (SS['small'] + 1)])
+description_param = parametrize('description', [None, '', 'x' * (SS['medium'] + 1)])
 created_at_param = parametrize('created_at', [None, 1])
 updated_at_param = parametrize('updated_at', [None, 2])
+id_param = parametrize('id', [None, 100000, -1, 's'])
 
 
 def _convert_time(obj, key):
@@ -50,7 +54,9 @@ def _convert_time(obj, key):
         return int(ts)
 
 
-def _convert_queryset(val):
+def _convert_queryset(key, val):
+    if key == 'paid_for' and isinstance(val, QuerySet):
+        return {x.user.id: f'{x.numerator}/{x.denominator}' for x in val}
     if hasattr(val, 'pk'):
         return val.pk
     if isinstance(val, QuerySet):
@@ -62,8 +68,8 @@ def _convert_queryset(val):
 
 def _assert_serialize(serializer, obj):
     obj_data = {key: _convert_time(obj, key) for key in serializer.__class__.Meta.fields}
-    serializer_data = {key: _convert_queryset(val) for key, val in serializer.data.items()}
-    obj_data = {key: _convert_queryset(val) for key, val in obj_data.items()}
+    serializer_data = {key: _convert_queryset(key, val) for key, val in serializer.data.items()}
+    obj_data = {key: _convert_queryset(key, val) for key, val in obj_data.items()}
     for key, val in obj_data.items():
         if isinstance(val, float):
             assert abs(val - serializer_data[key]) < 0.000000001
@@ -120,8 +126,9 @@ def test_serialize_user(paid_by_count, paid_for_count, share_count):
 @parametrize('paid_by', [None, [], [1, 2, 3]])
 @parametrize('paid_for', [None, [], [1, 3, 4]])
 @parametrize('balance', [None, {}, {"3": 1.0}])
-@decorators(name_param, created_at_param, updated_at_param)
-def test_deserialize_user_fail(name, shares, paid_by, paid_for, balance, created_at, updated_at):
+@decorators(name_param, created_at_param, updated_at_param, id_param)
+def test_deserialize_user_fail(name, shares, paid_by, paid_for, balance, created_at, updated_at,
+                               id):
     _assert_fail(random_users, UserSerializer, locals())
 
 
@@ -142,9 +149,9 @@ def test_serialize_share(user_count, expense_count):
 @parametrize('total', [None, 0.1, -1, ''])
 @parametrize('expenses', [None, [], [1, 2], ''])
 @parametrize('users', [None, [1000]])
-@parametrize('description', [None, '', 'x' * (SS['medium'] + 1)])
-@decorators(name_param, created_at_param, updated_at_param)
-def test_deserialize_share_fail(name, created_at, updated_at, total, expenses, users, description):
+@decorators(name_param, created_at_param, updated_at_param, id_param, description_param)
+def test_deserialize_share_fail(
+        name, created_at, updated_at, total, expenses, users, description, id):
     _assert_fail(random_shares, ShareSerializer, locals())
 
 
@@ -153,19 +160,78 @@ def test_deserialize_share_fail(name, created_at, updated_at, total, expenses, u
 @parametrize('paid_for_count', [1, 10])
 def test_serialize_expense(created_at, resolved, paid_for_count):
     if created_at:
-        (expense,), (share,), (user,) = random_expenses(1, resolved=resolved,
-                                                        created_at=rand_time(False))
+        (expense,), (share,), (user,) = random_expenses(
+            1, resolved=resolved, created_at=rand_time(False))
     else:
         (expense,), (share,), (user,) = random_expenses(1, resolved=resolved)
     paid_for_diff = paid_for_count - 1
     paid_for_users = random_users(paid_for_diff)
-    for user in paid_for_users:
-        share.users.add(user)
+    for paid_for_u in chain(paid_for_users, [user]):
+        share.users.add(paid_for_u)
         share.save()
-    paid_for = {u: (1, paid_for_count) for u in paid_for_users + [user]}
+    paid_for = {u: (1, paid_for_count) for u in chain(paid_for_users, [user])}
     expense.generate_ratio(paid_for)
     _assert_round_trip(ExpenseSerializer, expense)
 
 
-def test_deserialize_expense_fail():
-    pass
+@parametrize('created_at', [None, 'a'])
+@parametrize('share', [None, 1000])
+@parametrize('paid_by', [None, 1000])
+@parametrize('resolved', [None, 's', 10])
+@parametrize('paid_for', [None, 1, 'as'])
+@parametrize('total', [None, -1, 'a'])
+@decorators(id_param, updated_at_param, description_param)
+def test_deserialize_expense_fail(id, created_at, updated_at, description,
+                                  share, total, paid_by, resolved, paid_for):
+    _assert_fail(random_expenses, ExpenseSerializer, locals())
+
+
+@parametrize('cond', ['no_user', 'user_not_in_share', 'bad_sum', 'empty', 'bad_fraction'])
+def test_deserialize_expense_fail_bad_paid_for(cond):
+    share = random_shares(1)[0]
+    users = random_users(5)
+    user_ids = [u.id for u in users]
+    share.users.add(users[0])
+    share.save()
+    if cond == 'no_user':
+        for user in users[1:]:
+            share.users.add(user)
+            share.save()
+        paid_for = {id_: '1/6' for id_ in chain(user_ids, '999')}
+    elif cond == 'user_not_in_share':
+        paid_for = {id_: '1/5' for id_ in user_ids}
+    elif cond == 'bad_sum':
+        paid_for = {id_: '1/4' for id_ in user_ids}
+    elif cond == 'empty':
+        paid_for = {}
+    elif cond == 'bad_fraction':
+        paid_for = {id_: '1/5/' for id_ in user_ids}
+    else:
+        return
+    data = {'paid_for': paid_for, 'description': 'foo', 'total': 3,
+            'share': share.id, 'paid_by': user_ids[0]}
+    serializer = ExpenseSerializer(data=data)
+    with pytest.raises(ValidationError) as e:
+        serializer.is_valid(True)
+    assert e.value.args[0]['paid_for']
+
+
+@parametrize('cond', ['not_exist', 'not_in_share'])
+def test_deserialize_expense_fail_bad_paid_by(cond):
+    share = random_shares(1)[0]
+    paid_for_user, paid_by_user = random_users(2)
+    share.users.add(paid_for_user)
+    share.save()
+    if cond == 'not_exist':
+        user_id = 9999
+    elif cond == 'not_in_share':
+        user_id = paid_by_user.id
+    else:
+        return
+
+    data = {'paid_for': {str(paid_for_user.id): '1/1'}, 'description': 'foo',
+            'total': 3, 'share': share.id, 'paid_by': user_id}
+    serializer = ExpenseSerializer(data=data)
+    with pytest.raises(ValidationError) as e:
+        serializer.is_valid(True)
+    assert e.value.args[0]['paid_by']
