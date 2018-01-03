@@ -21,7 +21,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import ModelSerializer
 
 from .models import Expense, Share, User
-from .validators import validate_shares, validate_users
+from .validators import validate_expense_ratio, validate_shares, validate_users
 
 _base_fields = ('id', 'created_at', 'updated_at')
 
@@ -71,6 +71,7 @@ class UserSerializer(ReadonlyMixin, ModelSerializer):
         read_only_fields = _base_fields + ('paid_by', 'paid_for', 'balance')
 
     def to_internal_value(self, data):
+        data = data.copy()
         ret = super()._read_only(data)
         if 'shares' in data:
             ret['shares'] = validate_shares(data['shares'])
@@ -123,6 +124,7 @@ class ShareSerializer(ReadonlyMixin, ModelSerializer):
         extra_kwargs = {'users': {'allow_empty': True}}
 
     def to_internal_value(self, data):
+        data = data.copy()
         ret = super()._read_only(data)
         if 'users' in data:
             ret['users'] = validate_users(data['users'])
@@ -178,20 +180,60 @@ class ShareSerializer(ReadonlyMixin, ModelSerializer):
         return instance
 
 
-class ExpenseSerializer(ModelSerializer):
+class ExpenseSerializer(ReadonlyMixin, ModelSerializer):
     created_at = UnixTimeStamp(required=False)
     updated_at = UnixTimeStamp(read_only=True)
 
     class Meta:
         model = Expense
-        fields = _base_fields + ('description', 'share', 'total', 'paid_by', 'resolved', 'ratio')
+        fields = _base_fields + ('description', 'share', 'total',
+                                 'paid_by', 'paid_for', 'resolved')
         read_only_fields = ('id', 'updated_at')
+
+    def to_internal_value(self, data):
+        data = data.copy()
+        errors = {}
+
+        share_id = data.get('share')
+
+        if share_id is not None:
+            share, = validate_shares([share_id])
+        else:
+            share = self.fields['share']
+
+        ratio = data.get('paid_for')
+        ret = super()._read_only(data)
+
+        if ratio is not None:
+            if not ratio:
+                errors['paid_for'] = 'Cannot be empty.'
+            elif isinstance(ratio, dict):
+                ratio_res, validate = validate_expense_ratio(ratio, share)
+                if not validate:
+                    errors.update(ratio_res)
+                else:
+                    data['paid_for'] = ratio_res
+            else:
+                errors['paid_for'] = 'Must be a dict.'
+
+        paid_by = ret.get('paid_by')
+        if paid_by is not None:
+            if share not in paid_by.shares:
+                errors['paid_by'] = f'Paid by user with ID {paid_by.id} must be in the share.'
+        if errors:
+            raise ValidationError(errors)
+        if share_id is not None:
+            ret['share'] = share
+        return ret
 
     def to_representation(self, instance):
         res = super().to_representation(instance)
         total = res.get('total')
         if total is not None:
             res['total'] = float(total)
+        ratios = res.get('paid_for')
+        if ratios is not None:
+            res['paid_for'] = {r.user.id: f"{r.numerator}/{r.denominator}" for r in ratios}
         return res
 
     def create(self, validated_data):
@@ -224,13 +266,7 @@ class ExpenseSerializer(ModelSerializer):
         """
         validated_data = validated_data.copy()
         paid_for = validated_data.pop('paid_for')
-
-        if 'resolved' not in validated_data:
-            validated_data['resolved'] = False
-
-        instance = Expense.objects.create(**validated_data)
-        instance.generate_ratio(paid_for)
-        return instance
+        return Expense.new(paid_for=paid_for, **validated_data)
 
     def update(self, instance, validated_data):
         """
