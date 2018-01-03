@@ -15,11 +15,13 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """Validators for serializers"""
+from fractions import Fraction
 
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import ValidationError
 
 from api.models import Expense, Share, User
-from core.parse import natural_number
+from core.parse import natural_number, pos_int
 
 
 def __validate_id_list(ModelCls, name, value):
@@ -61,3 +63,34 @@ def validate_expenses(value):
 def validate_shares(value):
     """value -> list of shares"""
     return __validate_id_list(Share, 'shares', value)
+
+
+def _validate_ratio_entry(key, val, share):
+    try:
+        share.users.get(pk=key)
+    except ObjectDoesNotExist:
+        return {'paid_for': f'User with ID {key} is not in the share this expense belongs to.'}, \
+               False
+    try:
+        top, bot = val.split('/')
+    except (ValueError, TypeError):
+        return {'paid_for': "Ratio format must be 'numerator/denominator'"}, False
+    try:
+        top = pos_int(top)
+        bot = pos_int(bot)
+    except (ValueError, TypeError) as e:
+        return {'paid_for': str(e)}, False
+    return (top, bot), True
+
+
+def validate_expense_ratio(data, share):
+    res = {}
+    for key, val in data.items():
+        entry, success = _validate_ratio_entry(key, val, share)
+        if not success:
+            return entry, False
+        else:
+            res[key] = entry
+    if sum(Fraction(*val) for val in res.values()) != 1:
+        return {'paid_for': 'Ratio sum must be 1.'}, False
+    return res, True
