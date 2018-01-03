@@ -57,7 +57,7 @@ def test_expense_ratios():
     (expense, *_), shares, users = random_expenses(5)
     paid_for = {user: (1, 5) for user in users}
     expense.generate_ratio(paid_for)
-    ratios = list(expense.ratio)
+    ratios = list(expense.paid_for)
 
     for ratio in ratios:
         assert ratio.expense == expense

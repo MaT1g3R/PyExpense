@@ -17,6 +17,7 @@
 from math import fsum
 from typing import Dict, Tuple
 
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -28,6 +29,11 @@ Model = models.Model
 name_field = models.CharField(max_length=SS['small'])
 auto_created_at = models.DateTimeField(auto_now_add=True)
 auto_updateed_at = models.DateTimeField(auto_now=True)
+
+
+class MoneyField(models.DecimalField):
+    def __init__(self):
+        super().__init__(**MONEY, validators=[MinValueValidator(0)])
 
 
 class User(Model):
@@ -126,7 +132,7 @@ class Expense(Model):
     updated_at = auto_updateed_at
     description = models.CharField(max_length=SS['medium'])
     share = models.ForeignKey(Share, on_delete=models.CASCADE)
-    total = models.DecimalField(**MONEY)
+    total = MoneyField()
     paid_by = models.ForeignKey(User, on_delete=models.DO_NOTHING)
     resolved = models.BooleanField(default=False)
 
@@ -137,7 +143,7 @@ class Expense(Model):
         return instance
 
     @property
-    def ratio(self) -> QuerySet:
+    def paid_for(self) -> QuerySet:
         """
         Returns a QuerySet of ExpenseRatio that belongs to this Expense.
         """
@@ -154,7 +160,7 @@ class Expense(Model):
         """
         if not paid_for:
             raise ValueError('paid_for cannot be empty.')
-        for ratio in self.ratio:
+        for ratio in self.paid_for:
             ratio.delete()
         return [ExpenseRatio.objects.create(
             user=user, numerator=top, denominator=bot, expense=self)

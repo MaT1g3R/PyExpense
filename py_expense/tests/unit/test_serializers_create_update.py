@@ -50,7 +50,7 @@ def assert_creation_time(instance, auto=True):
 def assert_expense_items(validated_data, expense):
     for key, val in validated_data.items():
         if key == 'paid_for':
-            ratios = expense.ratio
+            ratios = expense.paid_for
             assert ratios.count() == len(val)
             assert {ratio.user: (ratio.numerator, ratio.denominator)
                     for ratio in ratios} == val
